@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jeopardy Nusantara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Archivo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --studio:#e8ebf6;--panel:#fff;--text:#101432;--muted:#5a6080;--line:#c9cfe6;
+  --board:#07138f;--cell:#1330c9;--cell-hi:#1c3fe6;--cell-used:#0a1678;--gold:#f7c326;
+  --ok:#1f9d55;--bad:#d6313a;
+  --p0:#e5484d;--p1:#12a594;--p2:#8e4ec6;--p3:#f76b15;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--studio:#050826;--panel:#0d1340;--text:#eef0ff;--muted:#a3a9d6;--line:#26306e}}
+:root[data-theme="dark"]{--studio:#050826;--panel:#0d1340;--text:#eef0ff;--muted:#a3a9d6;--line:#26306e}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--studio);color:var(--text);font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-size:16px;line-height:1.45}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.hidden{display:none!important}
+.wrap{max-width:760px;margin:0 auto;padding:22px 18px 40px}
+.logo{font-family:"Alfa Slab One",Georgia,serif;font-size:clamp(34px,8vw,64px);line-height:.95;color:var(--gold);background:var(--board);padding:20px 22px 24px;margin:0 0 14px;text-shadow:3px 3px 0 #000a;border-radius:6px}
+.logo small{display:block;font-family:Archivo,sans-serif;font-weight:600;font-size:15px;color:#fff;text-shadow:none;margin-top:10px}
+.sect{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px;margin-top:14px}
+.sect h2{margin:0 0 10px;font-size:18px}
+.hint{color:var(--muted);font-size:14px;margin:8px 0 0}
+.big{display:block;width:100%;margin-top:14px;padding:16px;border:0;border-radius:6px;background:var(--gold);color:#1a1300;font-weight:800;font-size:19px}
+.big.alt{background:var(--board);color:var(--gold)}
+.big:disabled{opacity:.4}
+.field{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--text);font:inherit;font-size:17px}
+.err{color:var(--bad);font-weight:600;margin-top:10px}
+.count{display:flex;gap:8px;flex-wrap:wrap}
+.count button{flex:1;padding:12px;border:2px solid var(--line);background:transparent;color:var(--text);border-radius:5px;font-weight:800}
+.count button[aria-pressed="true"]{background:var(--board);border-color:var(--board);color:var(--gold)}
+.roster{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.pill{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-left:7px solid var(--pc,var(--muted));border-radius:5px;font-weight:700}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--pc,var(--muted))}
+
+/* game shell */
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--board);color:#fff}
+.top .round{font-family:"Alfa Slab One",Georgia,serif;color:var(--gold);font-size:18px}
+.top .turn{font-size:13px;opacity:.9}
+.top button{background:transparent;border:1px solid #ffffff55;color:#fff;border-radius:4px;padding:6px 9px;font-size:13px}
+.boardwrap{overflow-x:auto;padding:8px;background:var(--board)}
+.board{display:grid;gap:5px;min-width:560px}
+.board.ro{min-width:0}
+.cat{background:var(--cell);color:#fff;font-weight:800;text-align:center;display:flex;align-items:center;justify-content:center;padding:8px 4px;min-height:52px;font-size:clamp(11px,1.5vw,17px);line-height:1.12;border-bottom:4px solid #000}
+.cell{background:var(--cell);border:0;color:var(--gold);font-family:"Alfa Slab One",Georgia,serif;font-size:clamp(18px,3vw,38px);min-height:54px;text-shadow:2px 2px 0 #000}
+.cell:hover:not(:disabled){background:var(--cell-hi)}
+.cell:disabled{background:var(--cell-used);color:transparent;text-shadow:none;cursor:default}
+.cell.ro{cursor:default;font-size:clamp(11px,2vw,20px);min-height:34px}
+.scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:7px;padding:9px;background:#000}
+.plate{background:#0b1466;color:#fff;border-radius:4px;padding:7px 11px;border-top:5px solid var(--pc);position:relative}
+.plate.ctrl{box-shadow:inset 0 0 0 2px var(--gold)}
+.plate.me{outline:2px solid #fff}
+.plate .nm{font-weight:800;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plate .sc{font-family:"Alfa Slab One",Georgia,serif;font-size:23px}
+.plate .sc.neg{color:#ff8a8f}
+.plate .buz{position:absolute;top:7px;right:9px;font-size:11px;color:var(--gold)}
+
+/* clue overlay */
+.clue{position:fixed;inset:0;background:var(--board);color:#fff;display:flex;flex-direction:column;z-index:10;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.chead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:13px 18px 0;font-weight:800}
+.chead .v{font-family:"Alfa Slab One",Georgia,serif;color:var(--gold);font-size:24px}
+.ctext{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px 20px;font-size:clamp(22px,3.8vw,46px);font-weight:800;line-height:1.2;text-shadow:2px 2px 0 #000a;overflow:auto}
+.ctext .inner{max-width:26ch}
+.dd{font-family:"Alfa Slab One",Georgia,serif;color:var(--gold);font-size:clamp(40px,9vw,96px);line-height:1;text-shadow:4px 4px 0 #000}
+.timer{height:9px;background:#ffffff22;margin:0 18px}
+.timer i{display:block;height:100%;background:var(--gold);width:100%;transition:width .1s linear}
+.timer.urgent i{background:var(--bad)}
+.status{text-align:center;font-weight:800;font-size:18px;padding:10px 16px 0;min-height:34px}
+.act{padding:12px 16px 20px}
+.buzzbig{display:block;width:100%;max-width:520px;margin:6px auto;border:0;border-radius:16px;padding:44px 16px;background:var(--pc,var(--gold));color:#fff;font-weight:800;font-size:30px;box-shadow:0 8px 0 #0006;touch-action:manipulation}
+.buzzbig:active{transform:translateY(5px);box-shadow:0 3px 0 #0006}
+.buzzbig:disabled{opacity:.3;box-shadow:none}
+.ansrow{display:flex;gap:10px;max-width:600px;margin:0 auto}
+.ansrow input{flex:1;min-width:0;padding:15px;font:inherit;font-size:20px;border:3px solid var(--pc,var(--gold));border-radius:8px;background:#fff;color:#101432}
+.btn{border:0;border-radius:8px;padding:14px 20px;font-weight:800;font-size:17px;background:var(--gold);color:#1a1300}
+.btn.ghost{background:transparent;color:#fff;border:1px solid #ffffff88;font-weight:600;font-size:14px;padding:10px 14px}
+.btnrow{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center}
+.verdict{font-family:"Alfa Slab One",Georgia,serif;font-size:clamp(30px,5.5vw,56px);line-height:1}
+.verdict.ok{color:#6ff2a5}.verdict.bad{color:#ff8a8f}
+.typed{font-size:17px;opacity:.9;margin-top:8px}
+.answer{font-size:clamp(20px,3.2vw,34px);color:var(--gold);margin-top:10px}
+.flag{background:none;border:0;color:#c7cdf7;text-decoration:underline;font-size:13px;padding:6px}
+.rank{display:flex;justify-content:space-between;align-items:center;padding:13px 15px;background:var(--panel);border:1px solid var(--line);border-left:8px solid var(--pc);border-radius:4px;margin-top:9px;font-weight:800;font-size:19px}
+.rank .slab{font-family:"Alfa Slab One",Georgia,serif;font-size:24px}
+.wait{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;gap:14px}
+.spin{width:34px;height:34px;border:4px solid #ffffff44;border-top-color:var(--gold);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#000;color:#fff;padding:10px 16px;border-radius:6px;z-index:50;font-size:14px;max-width:90vw;text-align:center}
+.badge{display:inline-block;background:#ffffff22;border-radius:20px;padding:3px 10px;font-size:12px;margin-left:8px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div style="position:fixed;right:8px;bottom:6px;font-size:11px;opacity:.45;z-index:60;pointer-events:none">v3-firebase</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+/* ============================================================
+   ISI CONFIG FIREBASE KAMU DI SINI (sekali saja)
+   Ambil dari Firebase Console > Project settings > Your apps (Web).
+   Yang wajib bener: apiKey dan databaseURL.
+   ============================================================ */
+var FBCFG = {
+  apiKey: "AIzaSyCDh1xQbQXzoIHmmjPs9l8ux0As08l2XXU",
+  authDomain: "jeopardy-marvelous.firebaseapp.com",
+  databaseURL: "https://jeopardy-marvelous-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "jeopardy-marvelous",
+  storageBucket: "jeopardy-marvelous.firebasestorage.app",
+  messagingSenderId: "651166906790",
+  appId: "1:651166906790:web:54f31f494ecdd1d3997767"
+};
+/* ============================================================ */
+</script>
+<script>
+/* ============ matcher ============ */
+var FILLERS = ["apa itu ", "siapa itu ", "siapakah ", "apakah ", "siapa ", "apa ", "the ", "adalah ", "yaitu "];
+function normAns(s) {
+  s = String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  s = s.replace(/[-_\/]/g, " ").replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+  var changed = true;
+  while (changed) {
+    changed = false;
+    for (var i = 0; i < FILLERS.length; i++) {
+      if (s.indexOf(FILLERS[i]) === 0 && s.length > FILLERS[i].length) { s = s.slice(FILLERS[i].length); changed = true; }
+    }
+  }
+  return s;
+}
+function lev(a, b) {
+  if (a === b) return 0;
+  var m = a.length, n = b.length;
+  if (!m) return n; if (!n) return m;
+  var prev = [], cur = [];
+  for (var j = 0; j <= n; j++) prev[j] = j;
+  for (var i = 1; i <= m; i++) {
+    cur = [i];
+    for (var j2 = 1; j2 <= n; j2++) {
+      var c = a[i - 1] === b[j2 - 1] ? 0 : 1;
+      cur[j2] = Math.min(prev[j2] + 1, cur[j2 - 1] + 1, prev[j2 - 1] + c);
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+// Toleransi typo: angka harus persis; <=4 huruf persis; 5-9 huruf boleh 1 salah; >=10 huruf boleh 2 salah
+function tolFor(key) {
+  if (/^\d+$/.test(key)) return 0;
+  if (key.length <= 4) return 0;
+  if (key.length <= 9) return 1;
+  return 2;
+}
+function checkAnswer(input, answers, strict) {
+  var u = normAns(input);
+  if (!u) return false;
+  var uc = u.replace(/ /g, ""), uw = u.split(" ");
+  for (var k = 0; k < answers.length; k++) {
+    var a = normAns(answers[k]);
+    if (!a) continue;
+    var ac = a.replace(/ /g, ""), t = strict ? 0 : tolFor(ac);
+    if (lev(uc, ac) <= t) return true;
+    // Jawaban benar yang diapit kata tambahan, misal "sungai amazon" untuk "amazon".
+    // Maksimal 2 kata ekstra supaya nggak bisa ngetik banyak tebakan sekaligus.
+    var aw = a.split(" ");
+    if (uw.length > aw.length && uw.length <= aw.length + 2) {
+      for (var i = 0; i + aw.length <= uw.length; i++) {
+        if (lev(uw.slice(i, i + aw.length).join(""), ac) <= t) return true;
+      }
+    }
+  }
+  return false;
+}
+if (typeof module !== "undefined") module.exports = { normAns: normAns, checkAnswer: checkAnswer };
+
+</script>
+<script>
+/* ============ questions ============ */
+// Format: [tingkat 1-5, "soal", "jawaban utama|alias|alias"]
+var Q = [
+{id:"sd", name:"Sejarah Dunia", q:[
+[1,"Kapal pesiar mewah yang tenggelam pada 1912 setelah menabrak gunung es.","Titanic"],
+[1,"Presiden pertama Amerika Serikat.","George Washington|Washington"],
+[1,"Pemimpin Nazi Jerman selama Perang Dunia II.","Adolf Hitler|Hitler"],
+[1,"Tahun runtuhnya Tembok Berlin.","1989"],
+[1,"Negara tempat Piramida Giza berada.","Mesir|Egypt"],
+[1,"Tahun berakhirnya Perang Dunia II.","1945"],
+[1,"Penjelajah yang didanai Spanyol dan mencapai benua Amerika pada 1492.","Christopher Columbus|Columbus|Kolumbus|Colombus|Cristoforo Colombo"],
+[1,"Kota yang dijatuhi bom atom pertama pada 6 Agustus 1945.","Hiroshima"],
+[1,"Manusia pertama yang menginjakkan kaki di Bulan.","Neil Armstrong|Armstrong"],
+[1,"Nama tembok raksasa di Tiongkok yang dibangun untuk menahan serangan dari utara.","Tembok Besar China|Tembok Besar Tiongkok|Tembok Besar|Tembok China|Great Wall|Great Wall of China"],
+[2,"Kaisar Prancis yang kalah dalam Pertempuran Waterloo tahun 1815.","Napoleon|Napoleon Bonaparte"],
+[2,"Revolusi yang diawali penyerbuan Penjara Bastille tahun 1789.","Revolusi Prancis|Revolusi Perancis|French Revolution"],
+[2,"Kota yang dijatuhi bom atom kedua pada 9 Agustus 1945.","Nagasaki"],
+[2,"Nama Istanbul sebelum ditaklukkan Kesultanan Utsmaniyah tahun 1453.","Konstantinopel|Constantinople|Konstantinopolis"],
+[2,"Pemimpin Uni Soviet yang menggantikan Lenin dan berkuasa selama Perang Dunia II.","Joseph Stalin|Stalin|Josef Stalin"],
+[2,"Pangkalan Angkatan Laut AS di Hawaii yang diserang Jepang pada 7 Desember 1941.","Pearl Harbor"],
+[2,"Tokoh India yang terkenal dengan perlawanan tanpa kekerasan (satyagraha).","Mahatma Gandhi|Gandhi|Mohandas Gandhi"],
+[2,"Presiden AS yang dibunuh di Dallas tahun 1963.","John F Kennedy|Kennedy|JFK|John Kennedy"],
+[2,"Wilayah di Eropa utara yang menjadi asal bangsa Viking.","Skandinavia|Scandinavia"],
+[2,"Tokoh yang dipenjara 27 tahun lalu menjadi presiden kulit hitam pertama Afrika Selatan.","Nelson Mandela|Mandela"],
+[3,"Piagam Inggris tahun 1215 yang membatasi kekuasaan raja.","Magna Carta|Magna Charta"],
+[3,"Satelit buatan pertama di dunia, diluncurkan Uni Soviet tahun 1957.","Sputnik|Sputnik 1"],
+[3,"Dinasti Tiongkok yang membangun Kota Terlarang di Beijing.","Ming|Dinasti Ming"],
+[3,"Ratu Mesir kuno yang menjalin hubungan dengan Julius Caesar dan Mark Antony.","Cleopatra|Kleopatra"],
+[3,"Kota tempat Archduke Franz Ferdinand dibunuh pada 1914, pemicu Perang Dunia I.","Sarajevo"],
+[3,"Penulis buku Das Kapital.","Karl Marx|Marx"],
+[3,"Kekaisaran yang didirikan Genghis Khan.","Mongol|Kekaisaran Mongol|Mongolia"],
+[3,"Sebutan populer untuk pendaratan Sekutu di Normandia pada 6 Juni 1944.","D-Day|D Day|Operation Overlord|Overlord|Operasi Overlord"],
+[3,"Kosmonot Soviet yang menjadi manusia pertama di luar angkasa tahun 1961.","Yuri Gagarin|Gagarin"],
+[3,"Kota Romawi kuno yang terkubur letusan Gunung Vesuvius tahun 79 M.","Pompeii|Pompei|Pompeji"],
+[4,"Perang Inggris melawan Prancis yang berlangsung dengan jeda dari 1337 hingga 1453.","Perang Seratus Tahun|Seratus Tahun|Hundred Years War"],
+[4,"Pemimpin revolusi Kuba yang memerintah negara itu selama puluhan tahun.","Fidel Castro|Castro"],
+[4,"Perjanjian tahun 1919 yang secara resmi mengakhiri Perang Dunia I dengan Jerman.","Perjanjian Versailles|Versailles|Traktat Versailles|Treaty of Versailles"],
+[4,"Pelaut Portugis yang pertama mencapai India lewat laut dengan mengitari Afrika, tahun 1498.","Vasco da Gama|Da Gama"],
+[4,"Tokoh yang memicu Reformasi Protestan dengan 95 tesis pada 1517.","Martin Luther|Luther"],
+[4,"Kaisar pertama Kekaisaran Romawi.","Augustus|Oktavianus|Octavian|Octavianus|Caesar Augustus|Agustus"],
+[4,"Peradaban kuno di Peru yang membangun Machu Picchu.","Inka|Inca|Suku Inka"],
+[4,"Pulau tempat rudal Soviet yang memicu krisis nuklir tahun 1962.","Kuba|Cuba"],
+[4,"Pemimpin yang memproklamasikan Republik Rakyat Tiongkok tahun 1949.","Mao Zedong|Mao|Mao Tse-tung|Mao Tse Tung"],
+[4,"Wabah abad ke-14 yang menewaskan sekitar sepertiga penduduk Eropa.","Black Death|Maut Hitam|Wabah Hitam|Pes|Sampar|Bubonic Plague"],
+[5,"Pertempuran tahun 1066 ketika William Sang Penakluk mengalahkan Raja Harold II.","Hastings|Pertempuran Hastings|Battle of Hastings"],
+[5,"Raja Makedonia yang pernah berguru pada Aristoteles dan menaklukkan Persia.","Alexander Agung|Alexander|Alexander the Great|Aleksander Agung|Iskandar Agung"],
+[5,"Perjanjian tahun 1494 yang membagi wilayah dunia baru antara Spanyol dan Portugis.","Tordesillas|Perjanjian Tordesillas|Treaty of Tordesillas"],
+[5,"Kaisar Jepang yang mengumumkan penyerahan Jepang tahun 1945.","Hirohito|Kaisar Showa|Showa"],
+[5,"Kumpulan hukum Babilonia kuno yang terkenal dengan prinsip mata ganti mata.","Kode Hammurabi|Hammurabi|Codex Hammurabi|Undang-undang Hammurabi|Hukum Hammurabi"],
+[5,"Nama kapal yang membawa kaum Pilgrim ke Amerika tahun 1620.","Mayflower"],
+[5,"Jenderal yang memimpin pasukan Konfederasi dalam Perang Saudara Amerika.","Robert E Lee|Robert Lee|Lee"],
+[5,"Dinasti terakhir yang memerintah Rusia sebelum revolusi 1917.","Romanov|Dinasti Romanov"],
+[5,"Kota di Krimea tempat Roosevelt, Churchill, dan Stalin bertemu pada Februari 1945.","Yalta|Konferensi Yalta"],
+[5,"Tahun runtuhnya Kekaisaran Romawi Barat menurut penanggalan yang umum dipakai.","476"]
+]},
+{id:"sa", name:"Sains & Alam", q:[
+[1,"Planet yang paling dekat dengan Matahari.","Merkurius|Mercury|Merkuri"],
+[1,"Rumus kimia air.","H2O"],
+[1,"Planet terbesar di tata surya.","Jupiter|Yupiter"],
+[1,"Gas yang kita hirup dan dibutuhkan sel untuk bernapas.","Oksigen|O2|Oxygen"],
+[1,"Hewan darat tercepat di dunia.","Cheetah|Citah"],
+[1,"Organ yang memompa darah ke seluruh tubuh.","Jantung|Heart"],
+[1,"Mamalia terbesar di dunia.","Paus biru|Blue whale"],
+[1,"Proses tumbuhan membuat makanan dengan bantuan cahaya matahari.","Fotosintesis|Photosynthesis"],
+[1,"Suhu (derajat Celsius) saat air murni membeku pada tekanan normal.","0|nol"],
+[1,"Planet yang dijuluki Planet Merah.","Mars"],
+[2,"Satuan SI untuk gaya.","Newton|N"],
+[2,"Tulang terpanjang di tubuh manusia.","Tulang paha|Femur"],
+[2,"Simbol kimia untuk emas.","Au"],
+[2,"Planet dengan sistem cincin paling mencolok.","Saturnus|Saturn"],
+[2,"Ilmuwan yang merumuskan teori relativitas.","Albert Einstein|Einstein"],
+[2,"Jumlah kromosom pada sel tubuh manusia normal.","46|empat puluh enam"],
+[2,"Organel yang dijuluki pembangkit tenaga sel.","Mitokondria|Mitochondria"],
+[2,"Nama lain zat hijau daun.","Klorofil|Chlorophyll"],
+[2,"Gas yang paling banyak di atmosfer Bumi.","Nitrogen|N2"],
+[2,"Ilmuwan yang dikenal dengan hukum gravitasi dan kisah apel jatuh.","Isaac Newton|Newton"],
+[3,"Simbol kimia untuk natrium.","Na"],
+[3,"Kecepatan cahaya di ruang hampa, kira-kira berapa kilometer per detik?","300000|300 ribu|299792|tiga ratus ribu"],
+[3,"Organ terbesar di tubuh manusia.","Kulit|Skin"],
+[3,"Ilmuwan yang menemukan penisilin tahun 1928.","Alexander Fleming|Fleming"],
+[3,"Kelompok hewan seperti katak yang hidup di dua alam.","Amfibi|Amphibi|Amfibia|Amphibia|Amphibian"],
+[3,"Nilai pH larutan netral.","7|tujuh"],
+[3,"Planet terpanas di tata surya.","Venus"],
+[3,"Satuan hambatan listrik.","Ohm"],
+[3,"Molekul pembawa informasi genetik yang berbentuk heliks ganda.","DNA|ADN|Deoxyribonucleic acid|Asam deoksiribonukleat"],
+[3,"Unsur dengan nomor atom 1.","Hidrogen|Hydrogen|H"],
+[4,"Ilmuwan yang mengemukakan teori evolusi melalui seleksi alam.","Charles Darwin|Darwin"],
+[4,"Logam yang berwujud cair pada suhu ruang.","Raksa|Air raksa|Merkuri|Mercury|Hg"],
+[4,"Lapisan atmosfer tempat sebagian besar peristiwa cuaca terjadi.","Troposfer|Troposphere"],
+[4,"Golongan darah yang disebut donor universal.","O|O negatif|O-|O rhesus negatif"],
+[4,"Bagian otak yang mengatur keseimbangan dan koordinasi gerak.","Otak kecil|Serebelum|Cerebellum|Serebellum"],
+[4,"Partikel subatom yang bermuatan negatif.","Elektron|Electron"],
+[4,"Ilmuwan Rusia yang menyusun tabel periodik unsur tahun 1869.","Dmitri Mendeleev|Mendeleev|Mendeleyev|Mendeleiev"],
+[4,"Jenis batuan yang terbentuk dari pembekuan magma.","Batuan beku|Beku|Igneous"],
+[4,"Satuan untuk frekuensi.","Hertz|Hz"],
+[4,"Vitamin yang dibentuk kulit dengan bantuan sinar matahari.","Vitamin D|D"],
+[5,"Bilangan Avogadro kira-kira 6,02 dikali 10 pangkat berapa?","23|dua puluh tiga"],
+[5,"Unsur yang paling melimpah di kerak Bumi.","Oksigen|Oxygen|O"],
+[5,"Hormon dari pankreas yang menurunkan kadar gula darah.","Insulin"],
+[5,"Ilmuwan yang merumuskan tiga hukum gerak planet.","Johannes Kepler|Kepler"],
+[5,"Istilah untuk pembelokan cahaya saat melewati medium yang berbeda.","Refraksi|Pembiasan|Refraction"],
+[5,"Satuan SI untuk jumlah zat.","Mol|Mole"],
+[5,"Unsur dengan simbol kimia K.","Kalium|Potassium|Potasium"],
+[5,"Satelit alami terbesar di tata surya, milik Jupiter.","Ganymede|Ganimede|Ganymedes"],
+[5,"Nama skala 1 sampai 10 untuk mengukur kekerasan mineral.","Mohs|Skala Mohs"],
+[5,"Tulang terkecil di tubuh manusia, terletak di telinga tengah.","Sanggurdi|Stapes|Stapes"]
+]},
+{id:"geo", name:"Geografi", q:[
+[1,"Benua terbesar di dunia.","Asia"],
+[1,"Samudra terluas di dunia.","Pasifik|Samudra Pasifik|Pacific"],
+[1,"Gunung tertinggi di dunia diukur dari permukaan laut.","Everest|Gunung Everest|Chomolungma|Sagarmatha"],
+[1,"Ibu kota Jepang.","Tokyo"],
+[1,"Negara Eropa yang peta wilayahnya berbentuk sepatu bot.","Italia|Italy"],
+[1,"Ibu kota Prancis.","Paris"],
+[1,"Gurun pasir terluas di Afrika.","Sahara|Gurun Sahara"],
+[1,"Negara yang berbatasan darat dengan Indonesia di Pulau Kalimantan.","Malaysia"],
+[1,"Negara asal hewan kanguru.","Australia"],
+[1,"Ibu kota Britania Raya.","London"],
+[2,"Sungai terpanjang di Afrika.","Nil|Sungai Nil|Nile"],
+[2,"Ibu kota Australia.","Canberra|Kanberra"],
+[2,"Negara terluas di dunia.","Rusia|Russia"],
+[2,"Ibu kota Korea Selatan.","Seoul"],
+[2,"Ibu kota Kanada.","Ottawa"],
+[2,"Pegunungan tempat Gunung Everest berada.","Himalaya|Pegunungan Himalaya"],
+[2,"Selat yang memisahkan Sumatra dan Semenanjung Malaysia.","Selat Malaka|Malaka|Melaka|Strait of Malacca"],
+[2,"Ibu kota Thailand.","Bangkok"],
+[2,"Negara yang dijuluki Negeri Kincir Angin.","Belanda|Netherlands|Holland"],
+[2,"Negara dengan penduduk terbanyak di dunia menurut PBB sejak 2023.","India"],
+[3,"Ibu kota Brasil.","Brasilia"],
+[3,"Danau air tawar terdalam di dunia, terletak di Siberia.","Baikal|Danau Baikal"],
+[3,"Negara terkecil di dunia berdasarkan luas.","Vatikan|Vatican|Vatican City|Kota Vatikan"],
+[3,"Ibu kota Turki.","Ankara"],
+[3,"Sungai dengan debit air terbesar di dunia, di Amerika Selatan.","Amazon|Amazonas|Sungai Amazon"],
+[3,"Ibu kota Selandia Baru.","Wellington"],
+[3,"Terusan yang menghubungkan Laut Tengah dan Laut Merah.","Terusan Suez|Suez|Suez Canal"],
+[3,"Satu-satunya negara Asia Tenggara yang tidak pernah dijajah bangsa Eropa.","Thailand|Siam"],
+[3,"Ibu kota Myanmar saat ini.","Naypyidaw|Naypyitaw|Nay Pyi Taw"],
+[3,"Laut yang sangat asin sehingga orang mudah mengapung, di antara Yordania dan Israel.","Laut Mati|Dead Sea"],
+[4,"Gunung tertinggi di Afrika.","Kilimanjaro|Gunung Kilimanjaro"],
+[4,"Ibu kota Kazakhstan.","Astana|Nur-Sultan|Nursultan"],
+[4,"Selat yang memisahkan Asia dan Amerika Utara.","Selat Bering|Bering|Bering Strait"],
+[4,"Ibu kota Nigeria.","Abuja"],
+[4,"Palung terdalam di dunia, di Samudra Pasifik.","Palung Mariana|Mariana|Mariana Trench"],
+[4,"Kota tempat pemerintahan federal Swiss berada.","Bern|Berne"],
+[4,"Danau terbesar di dunia menurut luas permukaan, sering disebut laut.","Laut Kaspia|Kaspia|Caspian|Caspian Sea"],
+[4,"Pegunungan terpanjang di daratan dunia, di Amerika Selatan.","Andes|Pegunungan Andes"],
+[4,"Negara yang namanya berarti khatulistiwa dalam bahasa Spanyol.","Ekuador|Ecuador"],
+[4,"Ibu kota Vietnam.","Hanoi|Ha Noi"],
+[5,"Ibu kota Bhutan.","Thimphu|Timphu"],
+[5,"Gurun non-kutub terkering di dunia, di Chili.","Atacama|Gurun Atacama"],
+[5,"Air terjun tertinggi di dunia, di Venezuela.","Angel Falls|Angel|Salto Angel|Kerepakupai Meru"],
+[5,"Negara yang wilayahnya sepenuhnya dikelilingi Afrika Selatan.","Lesotho"],
+[5,"Ibu kota Mongolia.","Ulaanbaatar|Ulan Bator|Ulaanbaatar|Ulan Batar"],
+[5,"Selat yang menjadi pintu masuk Laut Tengah dari Samudra Atlantik.","Selat Gibraltar|Gibraltar"],
+[5,"Sungai yang mengalir melalui kota Baghdad.","Tigris|Sungai Tigris|Dijlah"],
+[5,"Ibu kota Madagaskar.","Antananarivo|Tana"],
+[5,"Negara terluas di Afrika.","Aljazair|Algeria|Aljaziar"],
+[5,"Negara di Amerika Selatan yang memiliki dua kota berstatus ibu kota: Sucre dan La Paz.","Bolivia"]
+]},
+{id:"or", name:"Olahraga", q:[
+[1,"Jumlah pemain satu tim sepak bola di lapangan.","11|sebelas"],
+[1,"Olahraga yang memakai shuttlecock atau kok.","Bulu tangkis|Badminton|Bulutangkis"],
+[1,"Kapten Argentina saat juara Piala Dunia 2022.","Lionel Messi|Messi"],
+[1,"Olahraga yang identik dengan Michael Jordan.","Bola basket|Basket|Basketball"],
+[1,"Negara tuan rumah Olimpiade 2020 yang digelar tahun 2021.","Jepang|Japan"],
+[1,"Piala Dunia FIFA diadakan setiap berapa tahun sekali?","4|empat"],
+[1,"Bidak catur yang harus di-skakmat untuk memenangkan permainan.","Raja|King"],
+[1,"Olahraga yang memakai istilah love untuk skor nol.","Tenis|Tennis"],
+[1,"Jumlah cincin pada lambang Olimpiade.","5|lima"],
+[1,"Negara asal olahraga taekwondo.","Korea Selatan|Korea|South Korea"],
+[2,"Negara dengan gelar juara Piala Dunia FIFA putra terbanyak (5 kali).","Brasil|Brazil"],
+[2,"Turnamen tenis Grand Slam yang dimainkan di lapangan rumput.","Wimbledon"],
+[2,"Jumlah pemain satu tim bola voli di lapangan.","6|enam"],
+[2,"Jarak lari maraton dalam kilometer.","42,195|42|42195"],
+[2,"Julukan Cristiano Ronaldo yang juga jadi mereknya.","CR7"],
+[2,"Olahraga dengan istilah hole in one.","Golf"],
+[2,"Nilai tembakan dari luar garis tiga angka dalam bola basket.","3|tiga"],
+[2,"Petinju berjuluk The Greatest yang lahir dengan nama Cassius Clay.","Muhammad Ali|Ali"],
+[2,"Negara asal olahraga sumo.","Jepang|Japan"],
+[2,"Pelari Jamaika pemegang rekor dunia 100 meter 9,58 detik.","Usain Bolt|Bolt"],
+[3,"Kota tuan rumah Olimpiade Musim Panas 2024.","Paris"],
+[3,"Klub sepak bola Spanyol berjuluk Los Blancos.","Real Madrid|Madrid"],
+[3,"Negara juara Piala Dunia FIFA 2018.","Prancis|Perancis|France"],
+[3,"Jumlah pemain satu tim bola basket di lapangan.","5|lima"],
+[3,"Lomba balap sepeda paling bergengsi yang digelar setiap tahun di Prancis.","Tour de France"],
+[3,"Pebalap F1 Jerman yang juara dunia lima kali beruntun 2000 sampai 2004.","Michael Schumacher|Schumacher"],
+[3,"Kejuaraan dunia beregu putra bulu tangkis.","Piala Thomas|Thomas Cup|Thomas"],
+[3,"Tendangan hukuman dari titik 11 meter dalam sepak bola.","Penalti|Penalty|Tendangan penalti"],
+[3,"Petenis Swiss peraih 8 gelar tunggal putra Wimbledon.","Roger Federer|Federer"],
+[3,"Langkah khusus catur yang memindahkan raja dan benteng sekaligus.","Rokade|Castling"],
+[4,"Negara tuan rumah Piala Dunia FIFA 2022.","Qatar|Katar"],
+[4,"Perenang AS peraih 23 medali emas Olimpiade.","Michael Phelps|Phelps"],
+[4,"Nama lain turnamen Grand Slam Prancis Terbuka yang dimainkan di lapangan tanah liat.","Roland Garros|French Open|Prancis Terbuka"],
+[4,"Negara juara Piala Dunia FIFA pertama tahun 1930.","Uruguay"],
+[4,"Istilah golf untuk satu pukulan di bawah par.","Birdie"],
+[4,"Nama laga final tahunan liga sepak bola Amerika NFL.","Super Bowl|Superbowl"],
+[4,"Kota tuan rumah Olimpiade modern pertama tahun 1896.","Athena|Athens"],
+[4,"Pebalap MotoGP Italia bernomor 46 dengan 9 gelar juara dunia.","Valentino Rossi|Rossi"],
+[4,"Petinju yang menggigit telinga Evander Holyfield tahun 1997.","Mike Tyson|Tyson"],
+[4,"Kejuaraan dunia beregu putri bulu tangkis.","Piala Uber|Uber Cup|Uber"],
+[5,"Pemain dengan gol terbanyak dalam satu edisi Piala Dunia, 13 gol pada 1958.","Just Fontaine|Fontaine"],
+[5,"Kota tuan rumah Olimpiade 1988.","Seoul"],
+[5,"Negara yang secara mengejutkan menjuarai Euro 2004.","Yunani|Greece"],
+[5,"Istilah golf untuk tiga pukulan di bawah par pada satu hole.","Albatross|Albatros|Double eagle"],
+[5,"Klub yang menjuarai Piala Champions Eropa lima kali beruntun, 1956 sampai 1960.","Real Madrid|Madrid"],
+[5,"Pebalap F1 Brasil tiga kali juara dunia yang meninggal di Imola tahun 1994.","Ayrton Senna|Senna"],
+[5,"Jumlah pemain satu tim rugby union di lapangan.","15|lima belas"],
+[5,"Petenis putri pemegang rekor 24 gelar Grand Slam tunggal.","Margaret Court|Court"],
+[5,"Bela diri Olimpiade asal Jepang yang namanya berarti jalan kelembutan.","Judo|Yudo"],
+[5,"Kota tempat final Piala Dunia 1950 yang dikenal sebagai Maracanazo.","Rio de Janeiro|Rio"]
+]},
+{id:"fm", name:"Film & Musik", q:[
+[1,"Film animasi Disney tentang ratu es bernama Elsa.","Frozen"],
+[1,"Band asal Liverpool dengan anggota John, Paul, George, dan Ringo.","The Beatles|Beatles"],
+[1,"Penyanyi yang dijuluki King of Pop.","Michael Jackson|Jackson|MJ"],
+[1,"Film 1997 tentang kapal tenggelam yang dibintangi Leonardo DiCaprio.","Titanic"],
+[1,"Alat musik standar dengan 88 tuts.","Piano"],
+[1,"Grup K-pop dengan anggota RM, Jin, Suga, J-Hope, Jimin, V, dan Jungkook.","BTS|Bangtan|Bangtan Sonyeondan|Bangtan Boys"],
+[1,"Nama anak singa yang menjadi raja dalam The Lion King.","Simba"],
+[1,"Penyihir muda berkacamata dengan bekas luka petir di dahi.","Harry Potter|Harry"],
+[1,"Superhero Marvel yang memakai palu Mjolnir.","Thor"],
+[1,"Jumlah senar pada gitar standar.","6|enam"],
+[2,"Sutradara film Jurassic Park dan E.T.","Steven Spielberg|Spielberg"],
+[2,"Komposer yang tetap berkarya meski tuli, pencipta Simfoni No. 9 dengan Ode to Joy.","Beethoven|Ludwig van Beethoven"],
+[2,"Penyanyi asal Barbados yang mempopulerkan lagu Umbrella.","Rihanna"],
+[2,"Film Pixar tentang ikan badut yang mencari anaknya.","Finding Nemo|Nemo"],
+[2,"Vokalis band Queen.","Freddie Mercury|Mercury|Freddie"],
+[2,"Aktor pemeran Iron Man di Marvel Cinematic Universe.","Robert Downey Jr|Robert Downey|Downey|RDJ"],
+[2,"Komposer Austria pencipta opera The Magic Flute.","Mozart|Wolfgang Amadeus Mozart"],
+[2,"Agen rahasia fiksi dengan kode 007.","James Bond|Bond"],
+[2,"Penyanyi Inggris pelantun Shape of You.","Ed Sheeran|Sheeran"],
+[2,"Trilogi film dari novel J.R.R. Tolkien tentang cincin sakti.","The Lord of the Rings|Lord of the Rings|LOTR"],
+[3,"Sutradara film Titanic dan Avatar.","James Cameron|Cameron"],
+[3,"Film Korea Selatan yang meraih Oscar Film Terbaik tahun 2020.","Parasite|Gisaengchung"],
+[3,"Band pelantun Bohemian Rhapsody.","Queen"],
+[3,"Nama Darth Vader sebelum ia jatuh ke sisi gelap.","Anakin Skywalker|Anakin"],
+[3,"Penyanyi Inggris pelantun Hello dan Someone Like You.","Adele"],
+[3,"Studio animasi Jepang yang memproduksi Spirited Away.","Studio Ghibli|Ghibli"],
+[3,"Rapper dengan alter ego Slim Shady.","Eminem|Marshall Mathers"],
+[3,"Film 1994 yang dibintangi Tom Hanks sebagai pria polos yang berlari melintasi Amerika.","Forrest Gump"],
+[3,"Grup vokal Swedia pelantun Dancing Queen.","ABBA"],
+[3,"Aktor pemeran Kapten Jack Sparrow.","Johnny Depp|Depp"],
+[4,"Sutradara film Pulp Fiction.","Quentin Tarantino|Tarantino"],
+[4,"Komposer Italia pencipta The Four Seasons.","Vivaldi|Antonio Vivaldi"],
+[4,"Film 1959 yang pertama meraih 11 Piala Oscar.","Ben-Hur|Ben Hur"],
+[4,"Penyanyi yang dijuluki Queen of Pop.","Madonna"],
+[4,"Sutradara trilogi The Dark Knight dan film Oppenheimer.","Christopher Nolan|Nolan"],
+[4,"Band Irlandia dengan vokalis Bono.","U2"],
+[4,"Film Hitchcock tahun 1960 dengan adegan pembunuhan di kamar mandi.","Psycho"],
+[4,"Genre musik asal Jamaika yang dipopulerkan Bob Marley.","Reggae"],
+[4,"Nama asli Lady Gaga.","Stefani Germanotta|Germanotta|Stefani Joanne Angelina Germanotta"],
+[4,"Film 1972 tentang keluarga mafia Corleone.","The Godfather|Godfather"],
+[5,"Aktor pemeran Vito Corleone dalam The Godfather (1972).","Marlon Brando|Brando"],
+[5,"Komposer Rusia pencipta balet Swan Lake.","Tchaikovsky|Pyotr Tchaikovsky|Tchaikovski|Chaikovsky|Tsjaikovski"],
+[5,"Film pertama yang meraih Oscar Film Terbaik.","Wings"],
+[5,"Band grunge dengan vokalis Kurt Cobain.","Nirvana"],
+[5,"Sutradara Jepang pembuat Seven Samurai (1954).","Akira Kurosawa|Kurosawa"],
+[5,"Album Michael Jackson tahun 1982 yang sering disebut album terlaris sepanjang masa.","Thriller"],
+[5,"Satu-satunya aktor peraih tiga Oscar Aktor Utama Terbaik.","Daniel Day-Lewis|Day-Lewis|Daniel Day Lewis"],
+[5,"Komposer musik film Star Wars dan Jaws.","John Williams|Williams"],
+[5,"Film Stanley Kubrick tahun 1968 dengan komputer bernama HAL 9000.","2001: A Space Odyssey|2001|A Space Odyssey|Space Odyssey"],
+[5,"Aktris dengan rekor empat Oscar Aktris Utama Terbaik.","Katharine Hepburn|Hepburn|Katherine Hepburn"]
+]},
+{id:"sb", name:"Sastra & Bahasa", q:[
+[1,"Penulis seri Harry Potter.","J.K. Rowling|JK Rowling|Rowling"],
+[1,"Penulis drama Romeo and Juliet.","William Shakespeare|Shakespeare"],
+[1,"Kisah boneka kayu yang hidungnya memanjang saat berbohong.","Pinokio|Pinocchio"],
+[1,"Bahasa resmi Brasil.","Portugis|Portuguese|Bahasa Portugis"],
+[1,"Jumlah huruf dalam alfabet Latin yang dipakai bahasa Indonesia.","26|dua puluh enam"],
+[1,"Jumlah huruf vokal dalam bahasa Indonesia.","5|lima"],
+[1,"Bahasa dengan penutur asli terbanyak di dunia.","Mandarin|Bahasa Mandarin|Chinese|Mandarin Chinese"],
+[1,"Putri dongeng yang tertidur setelah menggigit apel beracun.","Putri Salju|Snow White"],
+[1,"Ucapan terima kasih dalam bahasa Jepang.","Arigato|Arigatou|Arigatou gozaimasu|Arigato gozaimasu"],
+[1,"Ucapan halo dalam bahasa Spanyol.","Hola"],
+[2,"Penulis kisah detektif Sherlock Holmes.","Arthur Conan Doyle|Conan Doyle|Doyle"],
+[2,"Bahasa resmi di Meksiko.","Spanyol|Spanish|Bahasa Spanyol"],
+[2,"Majas yang memberi sifat manusia pada benda mati.","Personifikasi|Personification"],
+[2,"Penulis Le Petit Prince (Pangeran Kecil).","Antoine de Saint-Exupery|Saint-Exupery|Saint Exupery|Exupery"],
+[2,"Epos India tentang Rama dan Sinta.","Ramayana"],
+[2,"Novel George Orwell yang memperkenalkan sosok Big Brother.","1984|Nineteen Eighty-Four"],
+[2,"Sinonim kata pandai.","Pintar|Cerdas|Cakap|Mahir|Pandai"],
+[2,"Penulis novel Don Quixote.","Miguel de Cervantes|Cervantes"],
+[2,"Detektif Belgia ciptaan Agatha Christie.","Hercule Poirot|Poirot"],
+[2,"Bahasa resmi di Iran.","Persia|Farsi|Persian|Bahasa Persia"],
+[3,"Penulis novel War and Peace.","Leo Tolstoy|Tolstoy|Tolstoi|Lev Tolstoy"],
+[3,"Penyair Persia penulis Rubaiyat.","Omar Khayyam|Khayyam|Umar Khayyam"],
+[3,"Istilah untuk kata yang dibaca sama dari depan dan belakang, seperti katak.","Palindrom|Palindrome"],
+[3,"Penulis novel Pride and Prejudice.","Jane Austen|Austen"],
+[3,"Novel Herman Melville tentang paus putih.","Moby Dick|Moby-Dick"],
+[3,"Majas yang melebih-lebihkan, contohnya suaranya membelah langit.","Hiperbola|Hyperbole"],
+[3,"Pencerita wanita dalam kisah Seribu Satu Malam.","Scheherazade|Syahrazad|Shahrazad|Sheherazade|Syahrazat"],
+[3,"Penulis The Old Man and the Sea.","Ernest Hemingway|Hemingway"],
+[3,"Tokoh utama novel The Hobbit.","Bilbo Baggins|Bilbo"],
+[3,"Penulis dongeng Putri Duyung Kecil dan Itik Buruk Rupa dari Denmark.","Hans Christian Andersen|Andersen|HC Andersen"],
+[4,"Penulis novel Crime and Punishment.","Fyodor Dostoevsky|Dostoevsky|Dostoyevsky|Dostoyevski|Dostoevski|Dostoyevskiy"],
+[4,"Penyair Italia penulis Divina Commedia.","Dante|Dante Alighieri"],
+[4,"Penulis Kolombia pengarang Seratus Tahun Kesunyian.","Gabriel Garcia Marquez|Garcia Marquez|Marquez|Gabo"],
+[4,"Aksara yang dipakai untuk menulis bahasa Rusia.","Kiril|Sirilik|Cyrillic|Kirilik|Kirill"],
+[4,"Majas perbandingan yang memakai kata seperti atau bagaikan.","Simile|Asosiasi|Perumpamaan"],
+[4,"Penyair Yunani kuno penulis Iliad dan Odyssey.","Homer|Homeros|Homerus"],
+[4,"Penulis kisah pria yang berubah menjadi serangga dalam Metamorfosis.","Franz Kafka|Kafka"],
+[4,"Penulis kisah Dr. Jekyll and Mr. Hyde.","Robert Louis Stevenson|Stevenson|RL Stevenson"],
+[4,"Penyair Inggris penulis Paradise Lost.","John Milton|Milton"],
+[4,"Novel F. Scott Fitzgerald tentang Jay Gatsby.","The Great Gatsby|Great Gatsby|Gatsby"],
+[5,"Nama kuda milik Don Quixote.","Rocinante|Rosinante"],
+[5,"Bahasa kerja resmi pemerintah federal Ethiopia.","Amharik|Amharic|Amhara"],
+[5,"Penulis Jepang peraih Nobel Sastra 1968, pengarang Yukiguni (Negeri Salju).","Yasunari Kawabata|Kawabata"],
+[5,"Penyair Bengali, orang Asia pertama peraih Nobel Sastra tahun 1913.","Rabindranath Tagore|Tagore"],
+[5,"Istilah untuk kata yang meniru bunyi, seperti dor atau meong.","Onomatope|Onomatopoeia|Onomatopeia"],
+[5,"Penulis Irlandia pengarang novel Ulysses.","James Joyce|Joyce"],
+[5,"Nama asli penulis Mark Twain.","Samuel Clemens|Samuel Langhorne Clemens|Clemens"],
+[5,"Epos Mesopotamia kuno tentang raja Uruk, salah satu karya sastra tertua.","Gilgamesh|Epos Gilgamesh"],
+[5,"Istilah untuk kata yang tulisan dan bunyinya sama tapi maknanya beda, seperti bisa ular dan bisa mampu.","Homonim|Homonym"],
+[5,"Penulis Prancis pengarang Madame Bovary.","Gustave Flaubert|Flaubert"]
+]},
+{id:"si", name:"Sejarah Indonesia", q:[
+[1,"Tanggal, bulan, dan tahun proklamasi kemerdekaan Indonesia.","17 Agustus 1945"],
+[1,"Presiden pertama Indonesia.","Soekarno|Sukarno|Bung Karno|Ir Soekarno"],
+[1,"Wakil presiden pertama Indonesia.","Mohammad Hatta|Hatta|Bung Hatta|Moh Hatta|Muhammad Hatta"],
+[1,"Pahlawan asal Jepara yang surat-suratnya dibukukan menjadi Habis Gelap Terbitlah Terang.","Kartini|RA Kartini|Raden Ajeng Kartini"],
+[1,"Bangsa Eropa yang paling lama berkuasa di Nusantara.","Belanda|Netherlands"],
+[1,"Presiden kedua Indonesia.","Soeharto|Suharto|Pak Harto"],
+[1,"Tanggal dan bulan peringatan Hari Pahlawan.","10 November"],
+[1,"Pencipta lagu Indonesia Raya.","WR Supratman|Wage Rudolf Supratman|Supratman"],
+[1,"Tokoh yang menjahit Bendera Pusaka Merah Putih.","Fatmawati|Ibu Fatmawati"],
+[1,"Nama ikrar para pemuda pada 28 Oktober 1928.","Sumpah Pemuda"],
+[2,"Kerajaan Hindu tertua di Indonesia, di Kalimantan Timur.","Kutai|Kutai Martadipura|Kutai Martapura"],
+[2,"Mahapatih Majapahit yang mengucapkan Sumpah Palapa.","Gajah Mada"],
+[2,"Kerajaan maritim Buddha yang berpusat di sekitar Palembang.","Sriwijaya"],
+[2,"Pangeran yang memimpin Perang Jawa 1825 sampai 1830.","Diponegoro|Pangeran Diponegoro"],
+[2,"Candi Buddha terbesar di dunia, di Magelang.","Borobudur|Candi Borobudur"],
+[2,"Kongsi dagang Belanda yang didirikan tahun 1602.","VOC|Vereenigde Oostindische Compagnie|Kompeni"],
+[2,"Presiden ketiga Indonesia.","BJ Habibie|Habibie|Bacharuddin Jusuf Habibie"],
+[2,"Tempat Soekarno dan Hatta dibawa golongan muda sehari sebelum proklamasi.","Rengasdengklok"],
+[2,"Pejuang wanita Aceh yang melanjutkan perlawanan setelah suaminya, Teuku Umar, gugur.","Cut Nyak Dhien|Cut Nyak Dien|Cut Nyak Din"],
+[2,"Alamat rumah tempat teks proklamasi dibacakan.","Jalan Pegangsaan Timur 56|Pegangsaan Timur 56|Pegangsaan Timur|Pegangsaan"],
+[3,"Raja yang membawa Majapahit ke puncak kejayaan bersama Gajah Mada.","Hayam Wuruk|Rajasanagara"],
+[3,"Kota tempat pertempuran besar 10 November 1945.","Surabaya"],
+[3,"Perundingan tahun 1946 antara Indonesia dan Belanda di Kuningan, Jawa Barat.","Linggarjati|Linggajati|Perundingan Linggarjati|Perjanjian Linggarjati"],
+[3,"Tokoh yang mengetik naskah proklamasi.","Sayuti Melik|Sajoeti Melik"],
+[3,"Konferensi di Bandung tahun 1955 yang dihadiri negara-negara Asia dan Afrika.","Konferensi Asia Afrika|KAA|Asia Afrika"],
+[3,"Pahlawan Maluku yang memimpin perlawanan di Saparua tahun 1817.","Pattimura|Kapitan Pattimura|Thomas Matulessy|Thomas Matulessia"],
+[3,"Organisasi pergerakan nasional yang berdiri pada 20 Mei 1908.","Budi Utomo|Boedi Oetomo|Budi Oetomo"],
+[3,"Gubernur Jenderal Belanda yang membangun Jalan Raya Pos Anyer sampai Panarukan.","Daendels|Herman Willem Daendels"],
+[3,"Ulama Minangkabau yang memimpin Perang Padri.","Tuanku Imam Bonjol|Imam Bonjol"],
+[3,"Tahun Soeharto mengundurkan diri dari kursi presiden.","1998"],
+[4,"Nama tiang batu bertulis peninggalan Kerajaan Kutai.","Yupa"],
+[4,"Konferensi di Den Haag tahun 1949 yang berujung pengakuan kedaulatan Indonesia oleh Belanda.","Konferensi Meja Bundar|KMB|Meja Bundar"],
+[4,"Pendiri Kerajaan Majapahit.","Raden Wijaya|Wijaya|Kertarajasa|Kertarajasa Jayawardhana"],
+[4,"Brigadir Jenderal Inggris yang tewas di Surabaya pada Oktober 1945.","Mallaby|AWS Mallaby"],
+[4,"Perjanjian tahun 1948 yang ditandatangani di atas kapal perang Amerika Serikat.","Renville|Perjanjian Renville"],
+[4,"Sultan Gowa yang dijuluki Ayam Jantan dari Timur.","Sultan Hasanuddin|Hasanuddin"],
+[4,"Singkatan badan bentukan Jepang tahun 1945 yang merumuskan dasar negara, sebelum PPKI.","BPUPKI|BPUPK|Dokuritsu Junbi Chosakai"],
+[4,"Nama serangan pasukan RI ke Yogyakarta pada 1 Maret 1949.","Serangan Umum 1 Maret|Serangan Umum|Serangan Oemoem 1 Maret|SU 1 Maret"],
+[4,"Panglima yang memimpin perang gerilya meski sedang sakit paru-paru.","Soedirman|Sudirman|Jenderal Sudirman|Jenderal Soedirman"],
+[4,"Kitab karya Mpu Prapanca tentang Majapahit.","Negarakertagama|Nagarakretagama|Nagarakertagama|Desawarnana"],
+[5,"Gubernur Jenderal yang memberlakukan sistem Tanam Paksa tahun 1830.","Van den Bosch|Johannes van den Bosch"],
+[5,"Raja terakhir Singasari yang gugur saat serangan Jayakatwang.","Kertanegara|Kertanagara"],
+[5,"Tahun armada Cornelis de Houtman pertama kali tiba di Banten.","1596"],
+[5,"Prasasti Sriwijaya tahun 682 M yang ditemukan di Palembang.","Kedukan Bukit|Prasasti Kedukan Bukit"],
+[5,"Ketua BPUPKI.","Radjiman Wedyodiningrat|Radjiman|Rajiman Wedyodiningrat|Radjiman Wediodiningrat|KRT Radjiman"],
+[5,"Perdana Menteri pertama Indonesia.","Sutan Sjahrir|Sjahrir|Syahrir|Sutan Syahrir"],
+[5,"Ketua Pemerintah Darurat Republik Indonesia (PDRI) 1948 sampai 1949.","Sjafruddin Prawiranegara|Syafruddin Prawiranegara|Sjafruddin|Syafruddin"],
+[5,"Pemimpin perlawanan dalam Perang Banjar.","Pangeran Antasari|Antasari"],
+[5,"Kerajaan Islam di Aceh dengan sultan pertama Malik as-Saleh.","Samudera Pasai|Samudra Pasai|Pasai"],
+[5,"Letnan Gubernur Inggris yang memerintah Jawa 1811 sampai 1816.","Raffles|Thomas Stamford Raffles|Stamford Raffles"]
+]},
+{id:"pui", name:"Pengetahuan Umum Indonesia", q:[
+[1,"Ibu kota Provinsi Jawa Barat.","Bandung"],
+[1,"Masakan Minang dari daging yang dimasak lama dengan santan dan bumbu hingga kering.","Rendang"],
+[1,"Lambang negara Indonesia.","Garuda Pancasila|Garuda"],
+[1,"Jumlah sila dalam Pancasila.","5|lima"],
+[1,"Mata uang Indonesia.","Rupiah|IDR|Rp"],
+[1,"Semboyan negara Indonesia.","Bhinneka Tunggal Ika|Bhineka Tunggal Ika"],
+[1,"Pulau yang dijuluki Pulau Dewata.","Bali"],
+[1,"Kadal raksasa khas Nusa Tenggara Timur.","Komodo"],
+[1,"Gunung tertinggi di Pulau Jawa.","Semeru|Gunung Semeru|Mahameru"],
+[1,"Kain bermotif yang dibuat dengan canting dan malam, diakui UNESCO.","Batik"],
+[2,"Danau vulkanik terbesar di Indonesia, di Sumatra Utara.","Danau Toba|Toba"],
+[2,"Alat musik bambu dari Jawa Barat yang diakui UNESCO.","Angklung"],
+[2,"Ibu kota Provinsi Sulawesi Selatan.","Makassar|Ujung Pandang"],
+[2,"Rumah adat Minangkabau dengan atap bergonjong.","Rumah Gadang|Gadang|Rumah Bagonjong"],
+[2,"Pulau terbesar kedua di dunia yang bagian baratnya wilayah Indonesia.","Papua|New Guinea|Nugini|Irian"],
+[2,"Tari Aceh yang dilakukan sambil duduk berjajar dengan gerakan cepat.","Saman|Tari Saman"],
+[2,"Penulis novel Laskar Pelangi.","Andrea Hirata|Hirata"],
+[2,"Nama bandara internasional utama di Jakarta.","Soekarno-Hatta|Soekarno Hatta|Soetta|CGK"],
+[2,"Selat yang memisahkan Pulau Jawa dan Sumatra.","Selat Sunda|Sunda"],
+[2,"Sungai terpanjang di Indonesia, di Kalimantan Barat.","Kapuas|Sungai Kapuas"],
+[3,"Puncak tertinggi Indonesia, di Papua.","Puncak Jaya|Carstensz|Carstensz Pyramid|Cartenz|Nemangkawi|Puncak Jayawijaya"],
+[3,"Gunung di Sumbawa yang meletus dahsyat tahun 1815.","Tambora|Gunung Tambora"],
+[3,"Gunung di Selat Sunda yang meletus hebat tahun 1883.","Krakatau|Krakatoa"],
+[3,"Penulis novel Bumi Manusia.","Pramoedya Ananta Toer|Pramoedya|Pram"],
+[3,"Pencipta lagu Bengawan Solo.","Gesang|Gesang Martohartono"],
+[3,"Suku asli Kalimantan dengan tradisi rumah panjang atau betang.","Dayak"],
+[3,"Ibu kota Provinsi Kalimantan Timur.","Samarinda"],
+[3,"Taman nasional di ujung barat Jawa yang menjadi habitat badak Jawa.","Ujung Kulon|Taman Nasional Ujung Kulon"],
+[3,"Jumlah provinsi Indonesia setelah pemekaran Papua tahun 2022.","38|tiga puluh delapan"],
+[3,"Senjata tradisional Jawa dengan bilah berlekuk yang disebut luk.","Keris|Kris"],
+[4,"Penyair Angkatan '45 penulis puisi Aku.","Chairil Anwar|Chairil"],
+[4,"Asal daerah tari Kecak.","Bali"],
+[4,"Ibu kota Provinsi Nusa Tenggara Timur.","Kupang"],
+[4,"Pencipta lagu Rayuan Pulau Kelapa.","Ismail Marzuki|Ismail Marzoeki"],
+[4,"Upacara pemakaman adat yang terkenal di Tana Toraja.","Rambu Solo|Rambu Solok"],
+[4,"Suku dari Sulawesi Selatan yang terkenal dengan kapal pinisi.","Bugis|Makassar|Konjo|Bugis Makassar"],
+[4,"Benteng peninggalan Belanda di Makassar yang juga disebut Benteng Ujung Pandang.","Fort Rotterdam|Rotterdam|Benteng Rotterdam"],
+[4,"Negara yang berbatasan darat dengan Indonesia di Pulau Timor.","Timor Leste|Timor-Leste|East Timor"],
+[4,"Burung khas Papua yang dijuluki burung surga.","Cendrawasih|Cenderawasih|Bird of Paradise"],
+[4,"Pulau yang terkenal dengan tradisi lompat batu atau fahombo.","Nias|Pulau Nias"],
+[5,"Kompleks candi Hindu terbesar di Indonesia, di perbatasan Yogyakarta dan Jawa Tengah.","Prambanan|Candi Prambanan|Roro Jonggrang|Rara Jonggrang"],
+[5,"Tokoh punakawan dalam wayang Jawa yang menjadi ayah Gareng, Petruk, dan Bagong.","Semar"],
+[5,"Selat yang memisahkan Bali dan Lombok.","Selat Lombok|Lombok"],
+[5,"Garis batas imajiner fauna Asia dan Australia yang melewati Selat Lombok.","Garis Wallace|Wallace"],
+[5,"Kota dengan jumlah penduduk terbanyak kedua di Indonesia.","Surabaya"],
+[5,"Novel Marah Rusli tahun 1922 tentang kisah cinta tak sampai.","Siti Nurbaya|Sitti Nurbaya"],
+[5,"Bahasa daerah dengan jumlah penutur terbanyak di Indonesia.","Jawa|Bahasa Jawa|Javanese"],
+[5,"Taman laut terkenal di Sulawesi Utara.","Bunaken|Taman Nasional Bunaken"],
+[5,"Sistem irigasi tradisional Bali yang diakui UNESCO.","Subak"],
+[5,"Pendiri Taman Siswa yang dijuluki Bapak Pendidikan Nasional.","Ki Hajar Dewantara|Ki Hadjar Dewantara|Soewardi Soerjaningrat|Suwardi Suryaningrat"]
+]}
+];
+
+
+// Batch 2: hapus Sastra & Bahasa, Olahraga ditulis ulang (30 dari 50 soal sepak bola), tambah 6 kategori
+Q = Q.filter(function (c) { return c.id !== "sb" && c.id !== "or"; });
+Q.push(
+{id:"or", name:"Olahraga", q:[
+[1,"Jumlah pemain satu tim sepak bola di lapangan.","11|sebelas"],
+[1,"Kapten Argentina saat juara Piala Dunia 2022.","Lionel Messi|Messi"],
+[1,"Piala Dunia FIFA diadakan setiap berapa tahun sekali?","4|empat"],
+[1,"Klub Inggris berjuluk Setan Merah.","Manchester United|Man United|MU|Man Utd|Manchester Utd"],
+[1,"Warna kartu yang membuat pemain sepak bola langsung dikeluarkan dari lapangan.","Merah|Kartu merah|Red"],
+[1,"Durasi waktu normal satu pertandingan sepak bola, dalam menit.","90|sembilan puluh"],
+[1,"Olahraga yang memakai shuttlecock atau kok.","Bulu tangkis|Badminton|Bulutangkis"],
+[1,"Olahraga yang identik dengan Michael Jordan.","Bola basket|Basket|Basketball"],
+[1,"Olahraga yang memakai istilah love untuk skor nol.","Tenis|Tennis"],
+[1,"Jumlah cincin pada lambang Olimpiade.","5|lima"],
+[2,"Negara dengan gelar juara Piala Dunia FIFA putra terbanyak (5 kali).","Brasil|Brazil"],
+[2,"Julukan Cristiano Ronaldo yang juga jadi mereknya.","CR7"],
+[2,"Negara juara Piala Dunia FIFA 2014.","Jerman|Germany"],
+[2,"Istilah saat satu pemain mencetak tiga gol dalam satu pertandingan.","Hattrick|Hat-trick|Hat trick"],
+[2,"Klub asal Katalonia yang bermarkas di Camp Nou.","Barcelona|Barca|FC Barcelona"],
+[2,"Kompetisi antarklub paling bergengsi di Eropa.","Liga Champions|Champions League|UCL|Liga Champions UEFA"],
+[2,"Turnamen tenis Grand Slam yang dimainkan di lapangan rumput.","Wimbledon"],
+[2,"Olahraga dengan istilah hole in one.","Golf"],
+[2,"Petinju berjuluk The Greatest yang lahir dengan nama Cassius Clay.","Muhammad Ali|Ali"],
+[2,"Pelari Jamaika pemegang rekor dunia 100 meter 9,58 detik.","Usain Bolt|Bolt"],
+[3,"Klub sepak bola Spanyol berjuluk Los Blancos.","Real Madrid|Madrid"],
+[3,"Negara juara Piala Dunia FIFA 2018.","Prancis|Perancis|France"],
+[3,"Tendangan hukuman dari titik 11 meter dalam sepak bola.","Penalti|Penalty|Tendangan penalti"],
+[3,"Legenda Brasil berjuluk O Rei, satu-satunya pemain peraih tiga gelar Piala Dunia.","Pele|Edson Arantes do Nascimento"],
+[3,"Nama stadion kandang Manchester United.","Old Trafford"],
+[3,"Pemain Argentina pencetak gol Tangan Tuhan di Piala Dunia 1986.","Diego Maradona|Maradona"],
+[3,"Lomba balap sepeda paling bergengsi yang digelar setiap tahun di Prancis.","Tour de France"],
+[3,"Pebalap F1 Jerman yang juara dunia lima kali beruntun 2000 sampai 2004.","Michael Schumacher|Schumacher"],
+[3,"Kejuaraan dunia beregu putra bulu tangkis.","Piala Thomas|Thomas Cup|Thomas"],
+[3,"Petenis Swiss peraih 8 gelar tunggal putra Wimbledon.","Roger Federer|Federer"],
+[4,"Negara tuan rumah Piala Dunia FIFA 2022.","Qatar|Katar"],
+[4,"Negara juara Piala Dunia FIFA pertama tahun 1930.","Uruguay"],
+[4,"Negara tuan rumah Piala Dunia 2002 bersama Korea Selatan.","Jepang|Japan"],
+[4,"Klub Italia berjuluk Si Nyonya Tua.","Juventus|Juve"],
+[4,"Pelatih Manchester United 1986 sampai 2013 yang meraih 13 gelar Liga Primer.","Alex Ferguson|Sir Alex Ferguson|Ferguson|SAF"],
+[4,"Klub yang juara Liga Primer Inggris 2003-04 tanpa sekali pun kalah, dijuluki The Invincibles.","Arsenal"],
+[4,"Perenang AS peraih 23 medali emas Olimpiade.","Michael Phelps|Phelps"],
+[4,"Nama lain turnamen Grand Slam Prancis Terbuka yang dimainkan di lapangan tanah liat.","Roland Garros|French Open|Prancis Terbuka"],
+[4,"Pebalap MotoGP Italia bernomor 46 dengan 9 gelar juara dunia.","Valentino Rossi|Rossi"],
+[4,"Kejuaraan dunia beregu putri bulu tangkis.","Piala Uber|Uber Cup|Uber"],
+[5,"Pemain dengan gol terbanyak dalam satu edisi Piala Dunia, 13 gol pada 1958.","Just Fontaine|Fontaine"],
+[5,"Negara yang secara mengejutkan menjuarai Euro 2004.","Yunani|Greece"],
+[5,"Klub yang menjuarai Piala Champions Eropa lima kali beruntun, 1956 sampai 1960.","Real Madrid|Madrid"],
+[5,"Kota tempat final Piala Dunia 1950 yang dikenal sebagai Maracanazo.","Rio de Janeiro|Rio"],
+[5,"Nama yang dipakai tim dari Nusantara di Piala Dunia 1938, tim Asia pertama di turnamen itu.","Hindia Belanda|Dutch East Indies|Nederlands Indie"],
+[5,"Kiper Uni Soviet, satu-satunya kiper peraih Ballon d'Or (1963).","Lev Yashin|Yashin"],
+[5,"Kota tuan rumah Olimpiade 1988.","Seoul"],
+[5,"Istilah golf untuk tiga pukulan di bawah par pada satu hole.","Albatross|Albatros|Double eagle"],
+[5,"Pebalap F1 Brasil tiga kali juara dunia yang meninggal di Imola tahun 1994.","Ayrton Senna|Senna"],
+[5,"Petenis putri pemegang rekor 24 gelar Grand Slam tunggal.","Margaret Court|Court"]
+]},
+{id:"gm", name:"Game", q:[
+[1,"Tukang ledeng berkumis dan bertopi merah, maskot Nintendo.","Mario|Super Mario"],
+[1,"Game balok jatuh buatan Alexey Pajitnov dari Uni Soviet.","Tetris"],
+[1,"Game sandbox kotak-kotak untuk menambang dan membangun, buatan Mojang.","Minecraft"],
+[1,"Pokémon listrik kuning pasangan Ash.","Pikachu"],
+[1,"Landak biru super cepat, maskot Sega.","Sonic|Sonic the Hedgehog"],
+[1,"Karakter bulat kuning pemakan titik yang dikejar hantu.","Pac-Man|Pacman"],
+[1,"Perusahaan Jepang pembuat konsol PlayStation.","Sony"],
+[1,"Game battle royale Epic Games yang terkenal dengan fitur membangun.","Fortnite"],
+[1,"Game MOBA mobile buatan Moonton yang sangat populer di Indonesia.","Mobile Legends|MLBB|Mobile Legends Bang Bang|ML"],
+[1,"Perusahaan pembuat konsol Xbox.","Microsoft"],
+[2,"Pahlawan berbaju hijau di seri The Legend of Zelda.","Link"],
+[2,"Game battle royale mobile buatan Garena dengan peta Bermuda.","Free Fire|Garena Free Fire|FF"],
+[2,"Seri game kriminal dunia terbuka buatan Rockstar dengan kota Los Santos.","Grand Theft Auto|GTA"],
+[2,"Makhluk hijau yang meledak di Minecraft.","Creeper"],
+[2,"Kera raksasa pelempar tong di game arcade 1981, debut Mario.","Donkey Kong"],
+[2,"Konsol hybrid Nintendo rilis 2017 yang bisa dimainkan portabel atau di TV.","Nintendo Switch|Switch"],
+[2,"Game tembak 5 lawan 5 buatan Valve dengan tim Teroris dan Kontra-Teroris.","Counter-Strike|Counter Strike|CS|CSGO|CS2"],
+[2,"Nama seri game sepak bola EA Sports sebelum berganti menjadi EA Sports FC tahun 2023.","FIFA"],
+[2,"Putri yang sering diselamatkan Mario.","Peach|Princess Peach|Putri Peach"],
+[2,"Game MOBA Valve dengan turnamen tahunan The International.","Dota 2|Dota|Defense of the Ancients"],
+[3,"Game Riot Games rilis 2009 dengan peta Summoner's Rift.","League of Legends|LoL"],
+[3,"Raja kura-kura bertanduk, musuh utama Mario.","Bowser|King Koopa|Koopa"],
+[3,"Studio Polandia pembuat The Witcher 3 dan Cyberpunk 2077.","CD Projekt Red|CD Projekt|CDPR"],
+[3,"Seri game horor Capcom sejak 1996 tentang Umbrella Corporation.","Resident Evil|Biohazard"],
+[3,"Pembunuh bayaran botak dengan tato barcode di seri Hitman.","Agent 47|47"],
+[3,"Jumlah Pokémon di generasi pertama.","151"],
+[3,"Pencipta seri Metal Gear.","Hideo Kojima|Kojima"],
+[3,"Game FromSoftware yang meraih Game of the Year di The Game Awards 2022.","Elden Ring"],
+[3,"Tokoh utama seri God of War.","Kratos"],
+[3,"Konsol Nintendo yang di Jepang bernama Famicom.","NES|Nintendo Entertainment System"],
+[4,"Pencipta Super Mario dan The Legend of Zelda.","Shigeru Miyamoto|Miyamoto"],
+[4,"Nama kerajaan tempat seri The Legend of Zelda berlangsung.","Hyrule"],
+[4,"Tahun PlayStation pertama dirilis di Jepang.","1994"],
+[4,"MMORPG Blizzard tahun 2004 yang berlatar dunia Azeroth.","World of Warcraft|WoW|Warcraft"],
+[4,"Game Valve tentang ilmuwan Gordon Freeman.","Half-Life|Half Life"],
+[4,"Studio Indonesia pembuat game horor DreadOut.","Digital Happiness"],
+[4,"Negara asal studio Mojang.","Swedia|Sweden"],
+[4,"Konsol genggam Nintendo tahun 1989 yang dibundel dengan Tetris.","Game Boy|Gameboy"],
+[4,"Tokoh utama seri Halo.","Master Chief|John-117|Chief"],
+[4,"Dua versi warna game Pokémon pertama yang rilis di Jepang tahun 1996.","Red dan Green|Red and Green|Merah dan Hijau|Red Green"],
+[5,"Game arcade Atari tahun 1972 bertema tenis meja.","Pong"],
+[5,"Studio Indonesia pembuat game A Space for the Unbound.","Mojiken|Mojiken Studio"],
+[5,"Pencipta Pokémon.","Satoshi Tajiri|Tajiri"],
+[5,"Game FromSoftware berlatar Jepang era Sengoku, GOTY The Game Awards 2019.","Sekiro|Sekiro Shadows Die Twice"],
+[5,"Kota fiktif tempat Resident Evil 2 berlangsung.","Raccoon City|Racoon City"],
+[5,"Game Larian Studios peraih GOTY The Game Awards 2023.","Baldur's Gate 3|Baldurs Gate 3|BG3"],
+[5,"Konsol rumahan terakhir buatan Sega.","Dreamcast|Sega Dreamcast"],
+[5,"Game FromSoftware tahun 2009 di PS3 yang dianggap cikal bakal genre soulslike.","Demon's Souls|Demons Souls"],
+[5,"Nama hantu merah di Pac-Man.","Blinky"],
+[5,"Tahun rilis versi penuh Minecraft 1.0.","2011"]
+]},
+{id:"mt", name:"Matematika", q:[
+[1,"7 × 8","56"],
+[1,"144 dibagi 12","12"],
+[1,"Jumlah sisi segi enam.","6|enam"],
+[1,"25% dari 200","50"],
+[1,"Akar kuadrat dari 81","9|sembilan"],
+[1,"15 + 27","42"],
+[1,"Jumlah besar sudut dalam segitiga, dalam derajat.","180"],
+[1,"1000 − 375","625"],
+[1,"Satu-satunya bilangan prima yang genap.","2|dua"],
+[1,"3 pangkat 3","27"],
+[2,"12 × 12","144"],
+[2,"Luas persegi dengan sisi 9 cm, dalam cm².","81"],
+[2,"2 pangkat 10","1024"],
+[2,"Keliling persegi panjang berukuran 8 × 5.","26"],
+[2,"0,75 dinyatakan dalam persen.","75|75%"],
+[2,"Bilangan prima terbesar yang lebih kecil dari 20.","19"],
+[2,"Jumlah besar sudut dalam segi empat, dalam derajat.","360"],
+[2,"17 × 3","51"],
+[2,"Nama bangun datar dengan 8 sisi.","Segi delapan|Segidelapan|Oktagon|Octagon"],
+[2,"KPK dari 4 dan 6","12"],
+[3,"FPB dari 36 dan 48","12"],
+[3,"15% dari 360","54"],
+[3,"Nilai pi dibulatkan ke dua angka desimal.","3,14|3.14"],
+[3,"Jumlah diagonal pada segi lima.","5|lima"],
+[3,"13 kuadrat","169"],
+[3,"5 faktorial (5!)","120"],
+[3,"Sisi miring segitiga siku-siku yang sisi tegaknya 6 dan 8.","10|sepuluh"],
+[3,"Bilangan Romawi XL","40"],
+[3,"Rata-rata dari 4, 8, dan 12.","8|delapan"],
+[3,"Volume kubus dengan rusuk 5 cm, dalam cm³.","125"],
+[4,"Jumlah semua bilangan bulat dari 1 sampai 100.","5050"],
+[4,"Bilangan Romawi MCMXLV","1945"],
+[4,"Suku ke-10 barisan Fibonacci 1, 1, 2, 3, 5, ...","55"],
+[4,"Logaritma basis 10 dari 1000.","3|tiga"],
+[4,"Akar pangkat tiga dari 343.","7|tujuh"],
+[4,"Jumlah besar sudut dalam segi enam, dalam derajat.","720"],
+[4,"Nama segitiga yang ketiga sisinya sama panjang.","Segitiga sama sisi|Sama sisi|Equilateral"],
+[4,"Peluang mendapat angka genap dalam satu lemparan dadu, dalam persen.","50|50%"],
+[4,"2 pangkat 0","1|satu"],
+[4,"Bilangan prima ke-10.","29"],
+[5,"Matematikawan Yunani penulis Elements, dijuluki bapak geometri.","Euclid|Euklides|Eukleides"],
+[5,"Bilangan Euler (e) dibulatkan ke dua angka desimal.","2,72|2.72"],
+[5,"Jumlah besar sudut luar segi banyak mana pun, dalam derajat.","360"],
+[5,"Sebutan bilangan yang sama dengan jumlah pembaginya sendiri, seperti 6 dan 28.","Bilangan sempurna|Sempurna|Perfect number"],
+[5,"Matematikawan Persia yang namanya menjadi asal kata algoritma.","Al-Khwarizmi|Al Khawarizmi|Khwarizmi|Al-Khawarizmi|Alkhwarizmi"],
+[5,"7! dibagi 5!","42"],
+[5,"Jumlah rusuk pada kubus.","12|dua belas"],
+[5,"Matematikawan yang membuktikan Teorema Terakhir Fermat pada 1990-an.","Andrew Wiles|Wiles"],
+[5,"Bilangan biner 1010 dalam desimal.","10|sepuluh"],
+[5,"Luas lingkaran berjari-jari 7 dengan pi 22/7.","154"]
+]},
+{id:"pc", name:"Pop Culture", q:[
+[1,"Aplikasi video pendek asal Tiongkok yang terkenal dengan tren jogetnya.","TikTok|Tik Tok|Douyin"],
+[1,"Tikus kartun maskot Disney.","Mickey Mouse|Mickey"],
+[1,"Boneka Mattel yang difilmkan tahun 2023 dengan Margot Robbie.","Barbie"],
+[1,"Serial Netflix Korea 2021 tentang permainan anak-anak yang mematikan.","Squid Game|Ojingeo Geim"],
+[1,"Penyanyi AS pelantun Shake It Off dengan konser The Eras Tour.","Taylor Swift|Swift|Taylor"],
+[1,"Spons kuning yang tinggal di rumah nanas di dasar laut.","SpongeBob|SpongeBob SquarePants"],
+[1,"Kucing putih ikon Sanrio yang tidak punya mulut.","Hello Kitty|Kitty"],
+[1,"Platform video milik Google.","YouTube"],
+[1,"Pendiri Facebook.","Mark Zuckerberg|Zuckerberg"],
+[1,"Makhluk kuning kecil berkacamata di film Despicable Me.","Minion|Minions"],
+[2,"Serial Netflix tentang anak-anak di kota Hawkins dan dunia Upside Down.","Stranger Things"],
+[2,"CEO Tesla dan SpaceX yang membeli Twitter tahun 2022.","Elon Musk|Musk"],
+[2,"Keluarga kuning dari serial animasi AS yang tayang sejak 1989.","The Simpsons|Simpsons"],
+[2,"Serial HBO dari novel George R.R. Martin tentang perebutan Iron Throne.","Game of Thrones|GOT"],
+[2,"Grup K-pop wanita beranggotakan Jisoo, Jennie, Rosé, dan Lisa.","Blackpink|Black Pink"],
+[2,"Nama lama platform X sebelum diganti tahun 2023.","Twitter"],
+[2,"Sitkom AS tentang enam sahabat di New York yang nongkrong di Central Perk.","Friends"],
+[2,"Kucing oranye pemalas di komik yang benci hari Senin.","Garfield"],
+[2,"Aplikasi berbagi foto yang dibeli Facebook tahun 2012.","Instagram|IG"],
+[2,"Negara asal Lisa, anggota Blackpink.","Thailand"],
+[3,"Nama alias Walter White di serial Breaking Bad.","Heisenberg"],
+[3,"Keluarga selebritas reality show AS dengan Kim, Kourtney, dan Khloé.","Kardashian|Kardashians"],
+[3,"Anjing Shiba Inu yang jadi meme dan maskot sebuah kripto.","Doge|Kabosu|Dogecoin"],
+[3,"Platform live streaming game milik Amazon.","Twitch"],
+[3,"Sebutan untuk fans BTS.","ARMY"],
+[3,"Merek mainan balok plastik asal Denmark.","Lego"],
+[3,"Serial Spanyol tentang perampokan dengan topeng Salvador Dalí.","Money Heist|La Casa de Papel|Casa de Papel"],
+[3,"Batas karakter satu cuitan Twitter sebelum dinaikkan tahun 2017.","140"],
+[3,"Serial Cartoon Network tentang Finn dan anjing ajaib Jake.","Adventure Time"],
+[3,"Sebutan untuk fans Blackpink.","Blink|Blinks"],
+[4,"Perusahaan kertas tempat para tokoh The Office versi AS bekerja.","Dunder Mifflin"],
+[4,"Pemilik restoran Krusty Krab di SpongeBob.","Mr Krabs|Tuan Krab|Krabs|Eugene Krabs"],
+[4,"Duo musik elektronik Prancis yang selalu tampil memakai helm robot.","Daft Punk"],
+[4,"Lagu PSY tahun 2012 yang viral dengan tarian menunggang kuda.","Gangnam Style|Gangnam"],
+[4,"Kota fiktif tempat keluarga Simpson tinggal.","Springfield"],
+[4,"Tahun YouTube didirikan.","2005"],
+[4,"Serial Netflix 2022 garapan Tim Burton tentang putri keluarga Addams.","Wednesday"],
+[4,"Judul video pertama yang diunggah ke YouTube, direkam di kebun binatang.","Me at the zoo"],
+[4,"Jumlah warna pada kubus Rubik standar.","6|enam"],
+[4,"Negara asal merek furnitur IKEA.","Swedia|Sweden"],
+[5,"Nama asli Bruno Mars.","Peter Hernandez|Peter Gene Hernandez"],
+[5,"Pencipta serial The Simpsons.","Matt Groening|Groening"],
+[5,"Pemilik anjing Snoopy di komik Peanuts.","Charlie Brown"],
+[5,"Tahun iPhone pertama diperkenalkan Steve Jobs.","2007"],
+[5,"Salah satu pendiri Wikipedia bersama Larry Sanger.","Jimmy Wales|Wales"],
+[5,"Kata pilihan Oxford Word of the Year 2013 untuk foto diri sendiri.","Selfie|Swafoto"],
+[5,"Penemu kubus Rubik asal Hungaria.","Erno Rubik|Rubik"],
+[5,"Nama burung biru logo Twitter.","Larry|Larry the Bird"],
+[5,"Tahun Netflix didirikan.","1997"],
+[5,"Nama asli rapper Drake.","Aubrey Graham|Aubrey Drake Graham"]
+]},
+{id:"gk", name:"General Knowledge", q:[
+[1,"Jumlah hari dalam tahun kabisat.","366"],
+[1,"Warna hasil campuran biru dan kuning.","Hijau|Green"],
+[1,"Jumlah kaki laba-laba.","8|delapan"],
+[1,"Bulan dengan jumlah hari paling sedikit.","Februari|February|Pebruari"],
+[1,"Hewan yang dijuluki raja hutan.","Singa|Lion"],
+[1,"Jumlah pemain dalam satu permainan catur.","2|dua"],
+[1,"Alat untuk mengukur suhu tubuh.","Termometer|Thermometer"],
+[1,"Warna lampu lalu lintas yang artinya berhenti.","Merah|Red"],
+[1,"Jumlah menit dalam satu jam.","60|enam puluh"],
+[1,"Hewan penghasil madu.","Lebah|Bee|Tawon"],
+[2,"Jumlah tulang pada tubuh manusia dewasa.","206"],
+[2,"Mata uang Jepang.","Yen|JPY"],
+[2,"Bahasa resmi Brasil.","Portugis|Portuguese|Bahasa Portugis"],
+[2,"Organisasi internasional yang didirikan tahun 1945 dan bermarkas di New York.","PBB|Perserikatan Bangsa-Bangsa|UN|United Nations"],
+[2,"Penemu yang paling dikenal atas bola lampu pijar komersial.","Thomas Edison|Edison"],
+[2,"Penulis drama Romeo and Juliet.","William Shakespeare|Shakespeare"],
+[2,"Mata uang Uni Eropa.","Euro|EUR"],
+[2,"Jumlah warna pelangi.","7|tujuh"],
+[2,"Hari dalam bahasa Inggris yang namanya berasal dari dewa Thor.","Thursday|Kamis"],
+[2,"Penulis seri Harry Potter.","J.K. Rowling|JK Rowling|Rowling"],
+[3,"Penemu telepon yang mematenkannya tahun 1876.","Alexander Graham Bell|Graham Bell|Bell"],
+[3,"Pelukis Mona Lisa.","Leonardo da Vinci|Da Vinci|Leonardo"],
+[3,"Jumlah kartu dalam satu set kartu remi tanpa joker.","52"],
+[3,"Negara asal pizza.","Italia|Italy"],
+[3,"Detektif ciptaan Arthur Conan Doyle.","Sherlock Holmes|Sherlock|Holmes"],
+[3,"Bahan baku utama pembuatan kaca.","Pasir|Pasir silika|Silika|Sand|Silica"],
+[3,"Mata uang Britania Raya.","Pound sterling|Poundsterling|Pound|GBP|Sterling"],
+[3,"Nama ukuran kertas 210 × 297 mm.","A4"],
+[3,"Kepanjangan WHO.","World Health Organization|Organisasi Kesehatan Dunia"],
+[3,"Pelukis Belanda pembuat The Starry Night.","Vincent van Gogh|Van Gogh"],
+[4,"Kode telepon internasional Indonesia.","62|+62"],
+[4,"Penemu mesin cetak huruf lepas di Eropa abad ke-15.","Johannes Gutenberg|Gutenberg"],
+[4,"Jumlah negara anggota PBB.","193"],
+[4,"Penemu dinamit yang namanya dipakai untuk hadiah internasional bergengsi.","Alfred Nobel|Nobel"],
+[4,"Istilah untuk rasa takut pada ketinggian.","Akrofobia|Acrophobia"],
+[4,"Kota tempat markas besar PBB.","New York|New York City|NYC"],
+[4,"Negara yang menghadiahkan Patung Liberty kepada AS.","Prancis|Perancis|France"],
+[4,"Huruf kedua dalam alfabet Yunani.","Beta"],
+[4,"Penulis novel Don Quixote.","Miguel de Cervantes|Cervantes"],
+[4,"Nama logam dengan simbol Fe.","Besi|Iron|Ferrum"],
+[5,"Istilah untuk orang yang sama terampilnya memakai tangan kiri dan kanan.","Ambidextrous|Ambidekstrus|Ambidekster"],
+[5,"Jumlah tuts hitam pada piano standar 88 tuts.","36"],
+[5,"Negara pertama yang memberi hak pilih nasional kepada perempuan, tahun 1893.","Selandia Baru|New Zealand"],
+[5,"Kota tempat Mahkamah Internasional (ICJ) berada.","Den Haag|The Hague|Hague|Haag"],
+[5,"Zodiak untuk orang yang lahir tanggal 1 Januari.","Capricorn|Kaprikornus|Capricornus"],
+[5,"Istilah untuk rasa takut pada ruang sempit.","Klaustrofobia|Claustrophobia"],
+[5,"Pelukis Spanyol pembuat lukisan Guernica.","Pablo Picasso|Picasso"],
+[5,"Kepanjangan NATO dalam bahasa Inggris.","North Atlantic Treaty Organization"],
+[5,"Ulang tahun pernikahan ke berapa yang disebut pernikahan emas?","50|lima puluh"],
+[5,"Nama ilmu yang mempelajari bendera.","Veksilologi|Vexillology"]
+]},
+{id:"kd", name:"Kata Huruf Dobel", strict:true, q:[
+[1,"Buah tropis berdaging kuning, salah satunya jenis harum manis.","Mangga"],
+[1,"Buah kecil bergerombol yang jadi bahan wine.","Anggur"],
+[1,"Ucapan untuk meminta ampun saat berbuat salah.","Maaf"],
+[1,"Alat untuk naik ke tempat yang tinggi, punya anak-anak.","Tangga"],
+[1,"Satuan waktu tujuh hari.","Minggu"],
+[1,"Kata lain untuk waktu atau momen, seperti pada ___ itu.","Saat"],
+[1,"Tempat pertunjukan yang lebih tinggi dari penonton.","Panggung"],
+[1,"Bunga yang jenis bulannya jadi puspa pesona Indonesia.","Anggrek"],
+[1,"Menanti kedatangan seseorang.","Tunggu|Menunggu"],
+[1,"Masuk ke dasar air dan tidak mengapung.","Tenggelam"],
+[2,"Patuh pada aturan atau perintah.","Taat"],
+[2,"Kegunaan atau faedah.","Manfaat"],
+[2,"Bagian dari sebuah kelompok atau organisasi.","Anggota"],
+[2,"Mampir sebentar di suatu tempat.","Singgah"],
+[2,"Rambut yang tumbuh di dagu pria.","Jenggot"],
+[2,"Mampu melakukan sesuatu.","Sanggup"],
+[2,"Lawan kata rendah.","Tinggi"],
+[2,"Burung besar berparuh tebal, khas Kalimantan.","Enggang"],
+[2,"Kelompok hewan bersayap yang diternakkan, seperti ayam dan bebek.","Unggas"],
+[2,"Kumpulan orang yang beribadah bersama.","Jemaah|Jamaah"],
+[3,"Nabi terakhir dalam agama Islam.","Muhammad|Nabi Muhammad"],
+[3,"Satuan gerakan salat, misalnya salat subuh dua ___.","Rakaat"],
+[3,"Angka hari dalam kalender.","Tanggal"],
+[3,"Kumpulan orang banyak dalam demonstrasi.","Massa"],
+[3,"Dilakukan beramai-ramai dalam jumlah besar, seperti PHK ___.","Massal"],
+[3,"Kuat dan tidak mudah menyerah.","Tangguh"],
+[3,"Benar-benar, tidak main-main.","Sungguh|Sungguh-sungguh"],
+[3,"Bagian tubuh tempat memakai ikat pinggang.","Pinggang"],
+[3,"Arah mata angin di antara timur dan selatan.","Tenggara"],
+[3,"Bagian belakang tubuh dari bahu sampai pinggang.","Punggung"],
+[4,"Kota di tepi Sungai Mahakam, ibu kota Kabupaten Kutai Kartanegara.","Tenggarong"],
+[4,"Pulau terluar di Samudra Hindia yang masuk Provinsi Bengkulu.","Enggano"],
+[4,"Pujangga besar Keraton Surakarta abad ke-19.","Ranggawarsita|Ronggowarsito|Ronggawarsita"],
+[4,"Sisa batang pohon yang sudah ditebang.","Tunggul"],
+[4,"Kerajaan pecahan Kahuripan oleh Airlangga, pasangan Panjalu.","Jenggala|Janggala"],
+[4,"Rencana penerimaan dan pengeluaran uang, contohnya APBN.","Anggaran"],
+[4,"Kursi kebesaran raja.","Singgasana"],
+[4,"Buah berkulit ungu tebal yang dijuluki ratu buah.","Manggis"],
+[4,"Tempat berlatih kesenian.","Sanggar"],
+[4,"Proses perkenalan sebelum menikah dalam tradisi Islam.","Taaruf"],
+[5,"Memegang erat dalam kepalan tangan.","Genggam|Menggenggam"],
+[5,"Batas waktu penyelesaian, padanan kata deadline.","Tenggat"],
+[5,"Mata uang Malaysia.","Ringgit"],
+[5,"Tidak mau atau segan.","Enggan"],
+[5,"Batang besi berujung pipih untuk mencongkel.","Linggis"],
+[5,"Suku yang tinggal di sekitar Gunung Bromo.","Tengger"],
+[5,"Gelungan rambut perempuan di belakang kepala.","Sanggul"],
+[5,"Terlambat membayar cicilan atau utang.","Menunggak|Tunggak|Tunggakan"],
+[5,"Cepat merespons dan peka terhadap keadaan.","Tanggap"],
+[5,"Kata pertama nama lama provinsi Aceh: ___ Aceh Darussalam.","Nanggroe"]
+]},
+{id:"am", name:"Anime & Manga", q:[
+[1,"Ninja berambut kuning yang menyimpan rubah ekor sembilan.","Naruto|Naruto Uzumaki|Uzumaki Naruto"],
+[1,"Kapten bajak laut bertopi jerami di One Piece.","Luffy|Monkey D Luffy"],
+[1,"Saiyan tokoh utama Dragon Ball.","Goku|Son Goku|Kakarot"],
+[1,"Kucing robot biru dari abad ke-22.","Doraemon"],
+[1,"Detektif SMA yang tubuhnya mengecil jadi anak-anak.","Conan|Detective Conan|Shinichi Kudo|Kudo Shinichi|Conan Edogawa|Edogawa Conan"],
+[1,"Anime tentang umat manusia melawan raksasa di balik tembok.","Attack on Titan|Shingeki no Kyojin|AOT|SNK"],
+[1,"Pelatih Pikachu bertopi merah di anime Pokémon.","Ash|Ash Ketchum|Satoshi"],
+[1,"Pembasmi iblis berhaori kotak hijau-hitam, kakak Nezuko.","Tanjiro|Tanjiro Kamado|Kamado Tanjiro"],
+[1,"Pahlawan botak yang mengalahkan musuh dengan satu pukulan.","Saitama"],
+[1,"Anime gadis penyelamat bumi bernama Usagi Tsukino.","Sailor Moon"],
+[2,"Buku catatan yang bisa membunuh orang yang namanya ditulis.","Death Note"],
+[2,"Pencipta Dragon Ball.","Akira Toriyama|Toriyama"],
+[2,"Film Studio Ghibli tentang roh hutan besar berbulu abu-abu.","My Neighbor Totoro|Totoro|Tonari no Totoro"],
+[2,"Anime sepak bola tentang Tsubasa Ozora.","Captain Tsubasa|Kapten Tsubasa"],
+[2,"Anime tentang Gon yang mencari ayahnya dan ingin jadi Hunter.","Hunter x Hunter|Hunter Hunter|HxH"],
+[2,"Majalah manga mingguan Shueisha tempat One Piece terbit.","Weekly Shonen Jump|Shonen Jump|Jump"],
+[2,"Anime tentang Itadori Yuji dan Gojo Satoru.","Jujutsu Kaisen|JJK"],
+[2,"Sebutan untuk komik Korea.","Manhwa"],
+[2,"Pendekar tiga pedang berambut hijau di One Piece.","Zoro|Roronoa Zoro"],
+[2,"Anime basket tentang Sakuragi Hanamichi.","Slam Dunk"],
+[3,"Julukan Light Yagami saat membunuh dengan Death Note.","Kira"],
+[3,"Pencipta One Piece.","Eiichiro Oda|Oda"],
+[3,"Pencipta Naruto.","Masashi Kishimoto|Kishimoto"],
+[3,"Anime tentang kakak beradik alkemis Edward dan Alphonse Elric.","Fullmetal Alchemist|FMA|Hagane no Renkinjutsushi"],
+[3,"Film Makoto Shinkai tahun 2016 tentang dua remaja yang bertukar tubuh.","Your Name|Kimi no Na wa|Kimi no Nawa"],
+[3,"Studio animasi yang memproduksi anime Demon Slayer.","Ufotable"],
+[3,"Sekolah pahlawan tempat Deku belajar di My Hero Academia.","UA|UA High|Yuei"],
+[3,"Manga Kentaro Miura tentang pendekar pedang besar bernama Guts.","Berserk"],
+[3,"Shinigami pemilik awal Death Note milik Light yang doyan apel.","Ryuk"],
+[3,"Kapal pertama Topi Jerami, pemberian Kaya.","Going Merry|Merry"],
+[4,"Salah satu pendiri Studio Ghibli, sutradara Spirited Away.","Hayao Miyazaki|Miyazaki"],
+[4,"Anime mecha 1995 dengan tokoh Shinji Ikari.","Neon Genesis Evangelion|Evangelion|Eva"],
+[4,"Pencipta Attack on Titan.","Hajime Isayama|Isayama"],
+[4,"Anime 1998 tentang pemburu bayaran luar angkasa Spike Spiegel.","Cowboy Bebop"],
+[4,"Penulis cerita Death Note, bukan ilustratornya.","Tsugumi Ohba|Ohba"],
+[4,"Film anime 1988 berlatar Neo-Tokyo dengan motor merah milik Kaneda.","Akira"],
+[4,"Klan Sasuke di Naruto.","Uchiha"],
+[4,"Kapal kedua Topi Jerami.","Thousand Sunny|Sunny"],
+[4,"Film anime pertama peraih Oscar Film Animasi Terbaik.","Spirited Away|Sen to Chihiro|Sen to Chihiro no Kamikakushi"],
+[4,"Nama lengkap detektif L di Death Note.","L Lawliet|Lawliet"],
+[5,"Pencipta Astro Boy yang dijuluki Dewa Manga.","Osamu Tezuka|Tezuka"],
+[5,"Pencipta Hunter x Hunter dan Yu Yu Hakusho.","Yoshihiro Togashi|Togashi"],
+[5,"Nama lengkap Nobita di Doraemon.","Nobita Nobi|Nobi Nobita"],
+[5,"Nama zanpakuto milik Kurosaki Ichigo di Bleach.","Zangetsu"],
+[5,"Manga dengan jumlah terbitan terbanyak di dunia oleh satu penulis menurut Guinness.","One Piece"],
+[5,"Tahun meninggalnya Akira Toriyama.","2024"],
+[5,"Studio yang memproduksi serial TV Neon Genesis Evangelion (1995).","Gainax"],
+[5,"Sebutan tujuh bajak laut yang diakui Pemerintah Dunia di One Piece.","Shichibukai|Oka Shichibukai|Warlords of the Sea|Tujuh Panglima Laut"],
+[5,"Pencuri legendaris bertopi dan berjubah putih, rival Conan.","Kaito Kid|Kaitou Kid|Kid|Kaito Kuroba"],
+[5,"Hokage pertama di Naruto.","Hashirama|Hashirama Senju|Senju Hashirama"]
+]}
+);
+
+
+</script>
+<script>
+(function(){
+"use strict";
+var PCOL=["var(--p0)","var(--p1)","var(--p2)","var(--p3)"];
+var CATS=Q.map(function(c){return {id:c.id,name:c.name,strict:!!c.strict,items:c.q.map(function(x,i){return {id:c.id+":"+i,d:x[0],q:x[1],a:x[2].split("|")}})}});
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function fmt(n){n=n||0;return (n<0?"-":"")+Math.abs(n).toLocaleString("id-ID")}
+function $(id){return document.getElementById(id)}
+var root=$("root");
+
+/* ============ audio ============ */
+var AC=null;
+function beep(f,d,type){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();var o=AC.createOscillator(),g=AC.createGain();o.type=type||"square";o.frequency.value=f;o.connect(g);g.connect(AC.destination);g.gain.setValueAtTime(0.07,AC.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+
+/* ============ capability bootstrap ============ */
+var ME={peer:null,role:null,name:"",cid:null}; // peer = my player id (p0 host); cid = stable client id
+var GS=null;
+var CODE=null,DEBUG=false,DBOK=false,NEXTN=1;
+var rdb=null,stateRef=null,inboxRef=null,stateSub=null,inboxSub=null,lastJoin=0;
+
+function isHost(){return ME.role==="host"}
+function amPlayer(pid){return GS&&GS.players&&GS.players.some(function(p){return p.pid===pid})}
+function rid(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36)}
+
+function fbInit(){
+  if(DBOK)return true;
+  if(!window.firebase||typeof FBCFG==="undefined"||!FBCFG.apiKey||FBCFG.apiKey.indexOf("PASTE")>=0||!FBCFG.databaseURL||FBCFG.databaseURL.indexOf("PASTE")>=0)return false;
+  try{ if(!firebase.apps.length)firebase.initializeApp(FBCFG); rdb=firebase.database(); DBOK=true; return true; }
+  catch(e){ return false; }
+}
+
+if(location.search.indexOf("debug")>=0){ debugBoot(); }
+else if(!fbInit()){ renderSetup(); }
+else { ME.cid=rid(); render(); }
+
+/* ---- transport (Firebase Realtime Database; host = authority) ---- */
+function shortCode(){var s="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",c="";for(var i=0;i<4;i++)c+=s[Math.floor(Math.random()*s.length)];return c}
+
+function createRoom(name){
+  ME.role="host";ME.name=name;ME.peer="p0";
+  CODE=shortCode();
+  GS={epoch:1,phase:"lobby",mode:lobbyMode,hostPeer:"p0",createdAt:Date.now(),
+      players:[{pid:"p0",cid:ME.cid,name:name.slice(0,16),color:PCOL[0],score:0}],
+      control:0,board:null,cur:null,seq:1,phaseK:1};
+  stateRef=rdb.ref("rooms/"+CODE+"/state");
+  inboxRef=rdb.ref("rooms/"+CODE+"/inbox");
+  inboxRef.remove().catch(function(){});
+  hostListenInbox();
+  broadcast();
+}
+function hostListenInbox(){
+  inboxSub=inboxRef.on("child_added",function(ch){
+    var key=ch.key,item=ch.val();
+    try{ hostInbox(item); }catch(e){}
+    inboxRef.child(key).remove();
+  },function(e){});
+}
+function hostInbox(item){
+  if(!item||!item.topic)return;
+  if(item.topic==="join"){ hostAddPlayer(item.cid,item.name); return; }
+  var p=GS.players.filter(function(x){return x.cid===item.cid})[0];
+  if(p)dispatchHost(item.topic,p.pid,item.data);
+}
+function hostAddPlayer(cid,name){
+  if(!cid)return;
+  if(GS.players.some(function(p){return p.cid===cid})){ broadcast(); return; }
+  if(GS.phase!=="lobby"||GS.players.length>=4)return;
+  GS.players.push({pid:"p"+(NEXTN++),cid:cid,name:String(name||"Pemain").slice(0,16),color:PCOL[GS.players.length%4],score:0});
+  bump();broadcast();
+}
+function joinRoom(code,name){
+  ME.role="player";ME.name=name;CODE=String(code).toUpperCase();
+  renderWaiting("Menyambung ke room "+CODE+"...");
+  stateRef=rdb.ref("rooms/"+CODE+"/state");
+  inboxRef=rdb.ref("rooms/"+CODE+"/inbox");
+  var gotAny=false;
+  stateSub=stateRef.on("value",function(snap){
+    var v=snap.val();
+    if(!v)return;
+    gotAny=true;
+    GS=normalizeGS(v);
+    var mine=GS.players?GS.players.filter(function(p){return p.cid===ME.cid})[0]:null;
+    ME.peer=mine?mine.pid:null;
+    if(!ME.peer&&GS.phase==="lobby")sendJoin(name);
+    render();
+  },function(e){ toast("Koneksi database bermasalah."); });
+  sendJoin(name);
+  setTimeout(function(){ if(!gotAny){ toast("Room "+CODE+" nggak ketemu. Cek kode / host udah bikin belum."); renderLanding(); } },8000);
+}
+function sendJoin(name){
+  if(!inboxRef)return;
+  var now=Date.now();if(now-lastJoin<2500)return;lastJoin=now;
+  inboxRef.push({cid:ME.cid,topic:"join",name:name,ts:now});
+}
+function broadcast(){
+  render();
+  if(ME.role==="host"&&stateRef){ stateRef.set(JSON.parse(JSON.stringify(GS))).catch(function(e){toast("Gagal simpan ke Firebase: "+(e&&e.code||e));}); }
+}
+function act(topic,data){
+  if(ME.role==="host"){ dispatchHost(topic,ME.peer,data); }
+  else if(inboxRef){ inboxRef.push({cid:ME.cid,topic:topic,data:(data===undefined?null:data),ts:Date.now()}); }
+}
+function dispatchHost(topic,pid,data){
+  if(!GS)return;
+  if(topic==="buzz")onBuzz({peer:pid});
+  else if(topic==="answer")onAnswerMsg({peer:pid,data:data});
+  else if(topic==="fwager")onFWager({peer:pid,data:data});
+  else if(topic==="fanswer")onFAnswer({peer:pid,data:data});
+  else if(topic==="pick"){if(GS.phase==="board"&&GS.players[GS.control]&&GS.players[GS.control].pid===pid)openCell(data.c,data.r);}
+}
+function normalizeGS(v){
+  if(!v)return v;
+  if(!v.players)v.players=[];
+  if(v.cur){ if(!v.cur.attempted)v.cur.attempted=[]; if(!v.cur.a)v.cur.a=[]; }
+  if(v.board)v.board.forEach(function(col){ if(col&&!col.cells)col.cells=[]; });
+  if(v.final){ var F=v.final; if(!F.el)F.el=[]; if(!F.wagers)F.wagers={}; if(!F.answers)F.answers={}; if(!F.ok)F.ok={}; if(!F.a)F.a=[]; }
+  return v;
+}
+
+/* ============ host state writer ============ */
+function push(){ broadcast(); }
+function bump(){ GS.seq=(GS.seq||0)+1; }
+function bumpK(){ GS.phaseK=(GS.phaseK||0)+1; }
+
+/* ============ host timers ============ */
+var hostTimer=null;
+function hostAfter(sec,cb){ clearTimeout(hostTimer); hostTimer=setTimeout(cb,sec*1000); }
+function hostStop(){ clearTimeout(hostTimer); hostTimer=null; }
+
+/* ============ host: start game ============ */
+function startGame(mode){
+  var ps=GS.players;
+  if(ps.length<2){toast("Minimal 2 pemain.");return}
+  ps.forEach(function(p,i){p.color=PCOL[i%4];p.score=0});
+  var cats=shuffle(CATS).slice(0,6),vals=[200,400,600,800,1000];
+  var board=cats.map(function(c){var pool=shuffle(c.items);return {catId:c.id,catName:c.name,strict:c.strict,cells:vals.map(function(v,r){var q=pool.filter(function(x){return x.d===r+1})[0]||pool[r];return {v:v,used:false,dd:false,q:{id:q.id,text:q.q,a:q.a}}})}});
+  var ddCol=Math.floor(Math.random()*6),ddRow=1+Math.floor(Math.random()*4);board[ddCol].cells[ddRow].dd=true;
+  GS.mode=mode;GS.board=board;GS.control=Math.floor(Math.random()*ps.length);GS.phase="board";GS.cur=null;bump();push();render();
+}
+
+/* ============ host: open clue ============ */
+function openCell(c,r){
+  var cell=GS.board[c].cells[r];if(cell.used)return;
+  var col=GS.board[c];
+  GS.cur={c:c,r:r,catName:col.catName,strict:col.strict,value:cell.v,dd:cell.dd,text:cell.q.text,a:cell.q.a,
+    buzzer:null,attempted:[],typed:"",lastOk:null,lastDelta:0,wager:0,reveal:false};
+  if(cell.dd){ GS.phase="dd"; bump();bumpK();push();render(); }
+  else{ GS.phase="buzz"; bump();bumpK();push();render(); hostAfter(10,onBuzzTimeout); }
+}
+function onBuzzTimeout(){ if(!isHost()||GS.phase!=="buzz")return; doReveal("Waktu buzz habis."); }
+function doReveal(msg){
+  GS.cur.reveal=true;GS.cur.revealMsg=msg||"";GS.phase="reveal";bump();push();render();
+}
+
+/* ============ host: buzz handling ============ */
+function onBuzz(m){
+  if(!isHost()||GS.phase!=="buzz")return;
+  var pid=m.peer;if(!amPlayer(pid))return;
+  if(GS.cur.attempted.indexOf(pid)>=0||GS.cur.buzzer)return;
+  hostStop();
+  GS.cur.buzzer=pid;GS.cur.attempted.push(pid);GS.phase="answer";bump();bumpK();push();render();
+  hostAfter(10,function(){ if(isHost()&&GS.phase==="answer")hostJudge(""); });
+}
+function onAnswerMsg(m){
+  if(!isHost()||GS.phase!=="answer")return;
+  if(m.peer!==GS.cur.buzzer)return;
+  hostStop();
+  hostJudge(m.data&&typeof m.data.text==="string"?m.data.text:"");
+}
+function hostJudge(text){
+  var ok=checkAnswer(text,GS.cur.a,GS.cur.strict);
+  GS.cur.typed=text;applyVerdict(ok);
+}
+function applyVerdict(ok){
+  var cur=GS.cur,p=playerBy(cur.buzzer);
+  if(cur.lastOk!==null&&p)p.score-=cur.lastDelta;
+  var d=ok?(cur.dd?cur.wager:cur.value):(cur.dd?-cur.wager:(GS.mode==="kompetitif"?-cur.value:0));
+  if(p)p.score+=d;
+  cur.lastDelta=d;cur.lastOk=ok;
+  if(ok)GS.control=playerIdx(cur.buzzer);
+  beep(ok?990:150,ok?.25:.35,ok?"sine":"sawtooth");
+  GS.phase="result";bump();push();render();
+}
+function playerIdx(pid){for(var i=0;i<GS.players.length;i++)if(GS.players[i].pid===pid)return i;return 0}
+function playerBy(pid){return GS.players[playerIdx(pid)]}
+function eligibleLeft(){return GS.players.filter(function(p){return GS.cur.attempted.indexOf(p.pid)<0})}
+
+function hostNext(){
+  var cur=GS.cur;
+  if(cur.lastOk||cur.dd){finishClue();return}
+  if(eligibleLeft().length){
+    cur.buzzer=null;cur.lastOk=null;cur.lastDelta=0;GS.phase="buzz";bump();bumpK();push();render();
+    hostAfter(10,onBuzzTimeout);
+  } else doReveal("Semua pemain sudah mencoba.");
+}
+function finishClue(){
+  hostStop();GS.board[GS.cur.c].cells[GS.cur.r].used=true;GS.cur=null;
+  var left=GS.board.some(function(col){return col.cells.some(function(c){return !c.used})});
+  if(left){GS.phase="board";bump();push();render();}
+  else startFinal();
+}
+function hostOverride(){ applyVerdict(!GS.cur.lastOk); }
+function hostSetScore(idx){
+  var p=GS.players[idx];var v=prompt("Skor baru untuk "+p.name,p.score);if(v===null)return;
+  var n=Math.round(+String(v).replace(/[^0-9-]/g,""));if(isNaN(n)||String(v).trim()===""){toast("Skor harus angka");return}
+  p.score=n;bump();push();render();
+}
+
+/* ============ FINAL ============ */
+function startFinal(){
+  hostStop();
+  var el=GS.players.filter(function(p){return p.score>0}).map(function(p){return p.pid});
+  var cat=CATS[Math.floor(Math.random()*CATS.length)];
+  var pool=shuffle(cat.items.filter(function(x){return x.d>=4}));
+  var q=pool[0]||cat.items[0];
+  GS.final={catName:cat.name,strict:cat.strict,text:q.q,a:q.a,el:el,wagers:{},answers:{},ok:{},reveal:false};
+  if(!el.length){GS.phase="end";bump();push();render();return}
+  GS.phase="fcat";bump();bumpK();push();render();
+}
+function finalToWager(){ GS.phase="fwager";bump();bumpK();push();render(); }
+function onFWager(m){
+  if(!isHost())return;
+  if(GS.phase==="dd"&&m.data&&m.data.dd){
+    var ctrl=GS.players[GS.control];if(!ctrl||m.peer!==ctrl.pid)return;
+    var maxd=Math.max(ctrl.score,1000),wd=Math.round((m.data&&+m.data.amt)||0);
+    if(!(wd>=5&&wd<=maxd))return;
+    GS.cur.wager=wd;GS.cur.buzzer=ctrl.pid;GS.cur.attempted=[ctrl.pid];GS.phase="answer";bump();bumpK();push();render();
+    hostAfter(10,function(){ if(isHost()&&GS.phase==="answer")hostJudge(""); });
+    return;
+  }
+  if(GS.phase!=="fwager")return;var F=GS.final;
+  if(F.el.indexOf(m.peer)<0||(m.peer in F.wagers))return;var p=playerBy(m.peer);
+  var w=Math.round((m.data&&+m.data.amt)||0);w=Math.max(0,Math.min(w,Math.max(p.score,0)));
+  F.wagers[m.peer]=w;bump();push();render();
+  if(Object.keys(F.wagers).length>=F.el.length){ GS.phase="fask";bumpK();bump();push();render();
+    hostAfter(30,function(){ if(isHost()&&GS.phase==="fask")finalReveal(); }); }
+}
+function onFAnswer(m){
+  if(!isHost()||GS.phase!=="fask")return;var F=GS.final;
+  if(F.el.indexOf(m.peer)<0||m.peer in F.answers)return;
+  F.answers[m.peer]=m.data&&typeof m.data.text==="string"?m.data.text:"";
+  F.ok[m.peer]=checkAnswer(F.answers[m.peer],F.a,F.strict);
+  bump();push();render();
+  if(Object.keys(F.answers).length>=F.el.length){hostStop();finalReveal();}
+}
+function finalReveal(){ GS.final.reveal=true;GS.phase="freveal";bump();push();render(); }
+function finalToggle(pid){ GS.final.ok[pid]=!GS.final.ok[pid];bump();push();render(); }
+function finalApply(){
+  var F=GS.final;F.el.forEach(function(pid){var p=playerBy(pid);var w=F.wagers[pid]||0;p.score+=F.ok[pid]?w:-w;});
+  GS.phase="end";bump();push();render();
+}
+function playAgain(){
+  GS.players.forEach(function(p){p.score=0});GS.final=null;GS.cur=null;
+  GS.phase="lobby";GS.board=null;bump();push();render();
+}
+
+/* ============ player actions ============ */
+var myBuzzedK=-1,mySubmittedK=-1;
+function playerBuzz(){
+  if(!GS||GS.phase!=="buzz")return;
+  if(GS.cur.attempted.indexOf(ME.peer)>=0)return;
+  myBuzzedK=GS.phaseK;beep(880,.18);act("buzz",{});render();
+}
+function playerAnswer(text){ act("answer",{text:text}); mySubmittedK=GS.phaseK; render(); }
+function playerFWager(amt){ act("fwager",{amt:amt}); mySubmittedK=GS.phaseK; render(); }
+function playerFAnswer(text){ act("fanswer",{text:text}); mySubmittedK=GS.phaseK; render(); }
+
+/* ============ client countdown ============ */
+var cdTimer=null,cdKey=null;
+function startCountdown(sec){
+  var bar=$("cdbar"),wrap=$("cd");if(!bar)return;
+  var end=Date.now()+sec*1000;
+  clearInterval(cdTimer);
+  cdTimer=setInterval(function(){
+    var left=Math.max(0,end-Date.now());bar.style.width=(left/(sec*1000)*100)+"%";
+    if(wrap)wrap.classList.toggle("urgent",left<3000);
+    if(left<=0)clearInterval(cdTimer);
+  },80);
+}
+
+/* ============ RENDER ============ */
+var lastActKey=null;
+function render(){
+  if(!ME.role){ renderLanding(); return; }
+  if(!GS){ renderWaiting("Menyiapkan..."); return; }
+  if(GS.phase==="lobby"){ isHost()?renderHostLobby():renderPlayerLobby(); return; }
+  if(GS.phase==="end"){ renderEnd(); return; }
+  if(GS.phase==="board"){ renderBoard(); return; }
+  renderClue();
+}
+function v(id){return ($(id)&&$(id).value||"").trim()}
+
+function renderSetup(){
+  root.innerHTML='<div class="wrap"><h1 class="logo">Jeopardy Nusantara<small>Perlu disambungin ke Firebase dulu, sekali saja.</small></h1>'+
+  '<div class="sect"><h2>Langkah setup (~5 menit)</h2><ol class="hint" style="line-height:1.75;padding-left:20px;color:var(--muted)">'+
+  '<li>Buka <b>console.firebase.google.com</b>, login, klik <b>Add project</b> (next-next, gratis).</li>'+
+  '<li>Menu kiri: <b>Build &gt; Realtime Database &gt; Create Database</b>, pilih lokasi terdekat, pilih <b>Start in test mode</b>.</li>'+
+  '<li>Klik gerigi <b>Project settings</b>, scroll ke <b>Your apps</b>, klik ikon web <b>&lt;/&gt;</b>, daftarkan app.</li>'+
+  '<li>Firebase kasih blok <code>firebaseConfig</code>. Copy nilainya.</li>'+
+  '<li>Buka file HTML ini (index.html), cari komentar <b>ISI CONFIG FIREBASE</b> di bagian atas, ganti semua nilai <code>PASTE...</code> dengan punyamu. Simpan, re-upload ke GitHub.</li>'+
+  '</ol><p class="hint">Setelah itu, buka lagi halaman ini dan otomatis jadi layar Buat/Gabung room.</p></div></div>';
+  lastActKey=null;
+}
+function renderLanding(){
+  var pre=(new URLSearchParams(location.search)).get("room")||"";
+  root.innerHTML='<div class="wrap"><h1 class="logo">Jeopardy Nusantara<small>Main bareng dari HP masing-masing. Satu orang bikin room lalu sebar kodenya, temen tinggal gabung. Semua ikut main.</small></h1>'+
+  '<div class="sect"><h2>Nama kamu</h2><input class="field" id="nm" maxlength="16" placeholder="Nama" autocomplete="off" value="'+esc(ME.name||"")+'"></div>'+
+  '<div class="sect"><h2>Gabung room</h2><input class="field" id="rc" maxlength="4" placeholder="Kode 4 huruf" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:4px" value="'+esc(pre)+'"><button class="big" id="joinBtn">Gabung</button></div>'+
+  '<div class="sect"><h2>Atau bikin room baru</h2><button class="big alt" id="hostBtn">Buat Room</button><p class="hint">Kamu ikut main juga. Kode room muncul untuk disebar.</p></div></div>';
+  $("joinBtn").onclick=function(){var n=v("nm"),c=v("rc");if(!n){toast("Isi nama dulu");return}if(c.length<4){toast("Kode 4 huruf");return}joinRoom(c,n)};
+  $("hostBtn").onclick=function(){var n=v("nm");if(!n){toast("Isi nama dulu");return}createRoom(n)};
+  $("rc").addEventListener("keydown",function(e){if(e.key==="Enter")$("joinBtn").click()});
+  lastActKey=null;
+}
+function renderWaiting(msg,sub){
+  root.innerHTML='<div class="clue"><div class="wait"><div class="spin"></div><div style="font-size:20px;font-weight:800">'+esc(msg)+'</div>'+(sub?'<div class="hint" style="color:#c7cdf7">'+esc(sub)+'</div>':'')+'</div></div>';
+  lastActKey=null;
+}
+
+var lobbyMode="klasik";
+function renderHostLobby(){
+  var ps=GS.players;
+  var link=location.origin+location.pathname+"?room="+(CODE||"");
+  var roster=ps.map(function(p){return '<div class="pill" style="--pc:'+p.color+'"><span class="dot"></span>'+esc(p.name)+(p.pid==="p0"?' (kamu, host)':'')+'</div>'}).join("");
+  root.innerHTML='<div class="wrap"><h1 class="logo">Ruang Tunggu<small>Sebar kode/link ke temen. Kamu ikut main.</small></h1>'+
+  '<div class="sect"><h2>Kode room</h2><div style="font-family:\'Alfa Slab One\',serif;font-size:46px;color:var(--board);letter-spacing:8px;text-align:center;margin:4px 0">'+(CODE?esc(CODE):"...")+'</div>'+
+  (CODE?'<button class="big" id="copyLink">Salin link undangan</button><p class="hint" style="word-break:break-all">'+esc(link)+'</p>':'<p class="hint">Menyiapkan koneksi Firebase...</p>')+'</div>'+
+  '<div class="sect"><h2>Pemain <span class="badge">'+ps.length+'/4</span></h2><div class="roster">'+roster+'</div>'+(ps.length<2?'<p class="hint">Nunggu minimal 1 temen gabung.</p>':'')+'</div>'+
+  '<div class="sect"><h2>Mode</h2><div class="count" id="modeBtns">'+
+  '<button data-m="klasik" aria-pressed="'+(lobbyMode==="klasik")+'">Klasik</button>'+
+  '<button data-m="kompetitif" aria-pressed="'+(lobbyMode==="kompetitif")+'">Kompetitif</button></div>'+
+  '<p class="hint">'+(lobbyMode==="klasik"?"Salah tidak mengurangi poin. Taruhan Daily Double & Final tetap bisa hilang.":"Salah mengurangi poin sebesar nilai soal, seperti Jeopardy asli.")+'</p></div>'+
+  '<button class="big" id="startBtn"'+(ps.length<2?" disabled":"")+'>Mulai Main</button>'+
+  (ps.length<2?'<p class="hint" style="text-align:center">Butuh minimal 2 pemain (termasuk kamu).</p>':'')+'</div>';
+  Array.prototype.forEach.call(document.querySelectorAll("#modeBtns button"),function(b){b.onclick=function(){lobbyMode=b.getAttribute("data-m");GS.mode=lobbyMode;renderHostLobby()}});
+  if($("copyLink"))$("copyLink").onclick=function(){try{navigator.clipboard.writeText(link)}catch(e){}toast("Link disalin")};
+  $("startBtn").onclick=function(){startGame(lobbyMode)};
+  lastActKey=null;
+}
+function renderPlayerLobby(){
+  var ps=(GS&&GS.players)||[];
+  root.innerHTML='<div class="wrap"><h1 class="logo">'+esc(ME.name||"Pemain")+'<small>Nunggu host mulai. Room: '+esc(CODE||"")+'</small></h1>'+
+  '<div class="sect"><h2>Pemain di room</h2><div class="roster">'+
+  (ps.length?ps.map(function(p){return '<div class="pill" style="--pc:'+p.color+'"><span class="dot"></span>'+esc(p.name)+(p.pid===ME.peer?' (kamu)':'')+'</div>'}).join(""):'<p class="hint">Menunggu...</p>')+
+  '</div></div></div>';
+  lastActKey=null;
+}
+
+function scoresHTML(){
+  return '<div class="scores">'+GS.players.map(function(p,i){
+    return '<div class="plate'+(i===GS.control?" ctrl":"")+(p.pid===ME.peer?" me":"")+(isHost()?'" data-si="'+i:'')+'" style="--pc:'+p.color+'">'+
+      '<div class="nm">'+esc(p.name)+'</div><div class="sc'+(p.score<0?" neg":"")+'">'+fmt(p.score)+'</div>'+
+      (GS.cur&&GS.cur.buzzer===p.pid?'<span class="buz">BUZZ</span>':'')+'</div>';
+  }).join("")+'</div>';
+}
+function wireScores(){
+  if(!isHost())return;
+  Array.prototype.forEach.call(document.querySelectorAll(".plate[data-si]"),function(el){
+    el.style.cursor="pointer";el.title="Tap untuk ubah skor";
+    el.onclick=function(){hostSetScore(+el.getAttribute("data-si"))};
+  });
+}
+
+function renderBoard(){
+  var canPick=GS.players[GS.control]&&GS.players[GS.control].pid===ME.peer;
+  var cols=GS.board.length;
+  var boardHTML='<div class="boardwrap"><div class="board" style="grid-template-columns:repeat('+cols+',minmax(62px,1fr))">';
+  GS.board.forEach(function(col){boardHTML+='<div class="cat">'+esc(col.catName)+'</div>'});
+  for(var r=0;r<5;r++)GS.board.forEach(function(col,c){
+    var cell=col.cells[r];
+    if(canPick&&!cell.used)boardHTML+='<button class="cell" data-c="'+c+'" data-r="'+r+'">'+cell.v+'</button>';
+    else boardHTML+='<div class="cell ro"'+(cell.used?' style="opacity:.22"':"")+'>'+(cell.used?"":cell.v)+'</div>';
+  });
+  boardHTML+='</div></div>';
+  var turn=GS.players[GS.control]?GS.players[GS.control].name:"";
+  root.innerHTML='<div class="top"><span class="round">'+(GS.mode==="kompetitif"?"Kompetitif":"Klasik")+'</span>'+
+    '<span class="turn">'+(canPick?"Giliranmu, pilih soal":"Giliran: "+esc(turn))+'</span>'+
+    (isHost()?'<button id="toFinal">Final</button>':'<span class="turn">'+esc(ME.name)+'</span>')+'</div>'+
+    boardHTML+scoresHTML();
+  if(canPick)Array.prototype.forEach.call(document.querySelectorAll(".cell[data-c]"),function(b){b.onclick=function(){act("pick",{c:+b.getAttribute("data-c"),r:+b.getAttribute("data-r")})}});
+  if(isHost()&&$("toFinal"))$("toFinal").onclick=function(){if(confirm("Lewati sisa papan, langsung ke Final?"))startFinal()};
+  wireScores();
+  lastActKey=null;
+}
+
+/* ---- clue screens ---- */
+function shell(headRight,textHTML){
+  return '<div class="clue"><div class="chead"><span>'+esc(GS.cur?GS.cur.catName:(GS.final?GS.final.catName:""))+'</span><span class="v">'+headRight+'</span></div>'+
+    '<div class="ctext"><div class="inner" id="ctx">'+textHTML+'</div></div>'+
+    '<div class="timer'+'" id="cd"><i id="cdbar"></i></div>'+
+    '<div class="status" id="stat"></div><div class="act" id="act"></div></div>';
+}
+function setStat(t){if($("stat"))$("stat").textContent=t}
+function setAct(h){if($("act"))$("act").innerHTML=h}
+function showCd(show){var w=$("cd");if(w)w.style.visibility=show?"visible":"hidden"}
+
+function renderClue(){
+  var actKey=[GS.phase,GS.cur?GS.cur.c+","+GS.cur.r:GS.final?"F":"-",GS.cur?GS.cur.buzzer:"",ME.role,GS.phaseK,GS.cur?GS.cur.lastDelta:"",GS.final?Object.keys(GS.final.answers||{}).length+"/"+Object.keys(GS.final.wagers||{}).length:""].join("|");
+  var fresh=actKey!==lastActKey;
+  if(fresh){
+    var head=GS.cur?fmt(GS.cur.value):"Final";
+    root.innerHTML=shell(GS.cur?fmt(GS.cur.value):"Final","");
+    lastActKey=actKey;
+  }
+  var host=isHost();
+  var P=GS.phase;
+  if(P==="dd") return ddPlayer();
+  if(P==="buzz") return buzzPlayer(fresh);
+  if(P==="answer") return answerPlayer(fresh);
+  if(P==="result") return host?resultHost():resultPlayer();
+  if(P==="reveal") return host?revealHost():revealPlayer();
+  if(P==="fcat") return host?fcatHost():fcatPlayer();
+  if(P==="fwager") return fwagerPlayer(fresh);
+  if(P==="fask") return faskPlayer(fresh);
+  if(P==="freveal") return host?frevealHost():frevealPlayer();
+}
+
+function clueText(){return esc(GS.cur.text)}
+/* buzz */
+function buzzHost(){
+  $("ctx").innerHTML=clueText();showCd(true);startCountdown(10);
+  setStat("Pemain buzz sekarang. "+(GS.cur.attempted.length?"Sisa: "+eligibleLeft().map(function(p){return p.name}).join(", "):""));
+  setAct('<div class="btnrow"><button class="btn ghost" id="reveal">Lewati / buka jawaban</button></div>');
+  if($("reveal"))$("reveal").onclick=function(){doReveal("Dilewati Tuan Rumah.")};
+}
+function buzzPlayer(fresh){
+  $("ctx").innerHTML=clueText();showCd(true);if(fresh)startCountdown(10);
+  var me=GS.players.filter(function(p){return p.pid===ME.peer})[0];
+  var attempted=GS.cur.attempted.indexOf(ME.peer)>=0;
+  var buzzed=myBuzzedK===GS.phaseK;
+  if(!me){ setStat("Kamu menonton ronde ini."); setAct(""); return; }
+  if(attempted){ setStat("Kamu sudah mencoba soal ini."); setAct('<button class="buzzbig" disabled style="--pc:'+me.color+'">SUDAH</button>'); return; }
+  setStat(buzzed?"Kamu buzz! Menunggu Tuan Rumah...":"Tekan tombol kalau tahu jawabannya");
+  setAct('<button class="buzzbig" id="bz" style="--pc:'+me.color+'"'+(buzzed?" disabled":"")+'>'+(buzzed?"...":"BUZZ")+'</button>');
+  if($("bz"))$("bz").addEventListener("pointerdown",function(e){e.preventDefault();playerBuzz()});
+}
+/* answer */
+function answerHost(){
+  var p=playerBy(GS.cur.buzzer);
+  $("ctx").innerHTML=clueText();showCd(true);startCountdown(10);
+  setStat((p?p.name:"Pemain")+" sedang menjawab"+(GS.cur.dd?" (taruhan "+fmt(GS.cur.wager)+")":"")+"...");
+  setAct('<p class="hint" style="color:#c7cdf7;text-align:center;margin:0">Jawaban muncul otomatis begitu dia kirim. Kamu bisa koreksi setelahnya.</p>');
+}
+function answerPlayer(fresh){
+  var mine=GS.cur.buzzer===ME.peer;
+  $("ctx").innerHTML=clueText();showCd(true);if(fresh)startCountdown(10);
+  if(!mine){
+    var p=playerBy(GS.cur.buzzer);setStat((p?p.name:"Pemain")+" sedang menjawab...");setAct("");return;
+  }
+  var me=playerBy(ME.peer);
+  var sent=mySubmittedK===GS.phaseK;
+  setStat(sent?"Jawaban terkirim, menunggu penilaian...":"Ketik jawaban kamu, 10 detik");
+  if(fresh||!$("ai")){
+    setAct('<div class="ansrow" style="--pc:'+me.color+'"><input id="ai" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Jawaban..."><button class="btn" id="ab">Kirim</button></div>');
+    var inp=$("ai");setTimeout(function(){if(inp)inp.focus()},30);
+    var go=function(){if(mySubmittedK===GS.phaseK)return;var v=$("ai")?$("ai").value:"";playerAnswer(v)};
+    if($("ab"))$("ab").onclick=go;
+    if(inp)inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();go()}});
+  }
+  if(sent&&$("ai")){$("ai").disabled=true;if($("ab"))$("ab").disabled=true}
+}
+/* result */
+function resultHost(){
+  var cur=GS.cur,p=playerBy(cur.buzzer),ok=cur.lastOk,d=cur.lastDelta;showCd(false);
+  var more=!ok&&!cur.dd&&eligibleLeft().length>0;
+  $("ctx").innerHTML='<div class="verdict '+(ok?"ok":"bad")+'">'+(ok?"Benar! +"+fmt(d):(d?"Salah, -"+fmt(-d):"Salah"))+'</div>'+
+    '<div class="typed">'+esc(p?p.name:"")+': '+(cur.typed&&cur.typed.trim()?esc(cur.typed):"(kosong)")+'</div>'+
+    (more?"":'<div class="answer">Jawaban: '+esc(cur.a[0])+'</div>');
+  setStat("");
+  setAct('<div class="btnrow"><button class="btn" id="next">'+(more?"Lanjut, pemain lain buzz":"Kembali ke papan")+'</button>'+
+    '<button class="btn ghost" id="ov">'+(ok?"Koreksi: jadi salah":"Koreksi: jadi benar")+'</button></div>'+
+    '<div class="btnrow"><button class="flag" id="flag">Soal ini keliru? Lewati saja</button></div>');
+  $("next").onclick=hostNext;$("ov").onclick=hostOverride;
+  if($("flag"))$("flag").onclick=function(){doReveal("Soal dilewati.")};
+}
+function resultPlayer(){
+  var cur=GS.cur,p=playerBy(cur.buzzer),ok=cur.lastOk;showCd(false);
+  var more=!ok&&!cur.dd&&eligibleLeft().length>0;
+  $("ctx").innerHTML='<div class="verdict '+(ok?"ok":"bad")+'">'+(cur.buzzer===ME.peer?(ok?"Kamu benar!":"Kamu salah"):((p?p.name:"Pemain")+(ok?" benar":" salah")))+'</div>'+
+    (more?'<div class="typed">Pemain lain masih bisa buzz</div>':'<div class="answer">Jawaban: '+esc(cur.a[0])+'</div>');
+  setStat("");setAct('<p class="hint" style="color:#c7cdf7;text-align:center;margin:0">Menunggu Tuan Rumah...</p>');
+}
+/* reveal */
+function revealHost(){
+  showCd(false);$("ctx").innerHTML=clueText()+'<div class="answer">Jawaban: '+esc(GS.cur.a[0])+'</div>';
+  setStat(GS.cur.revealMsg||"");
+  setAct('<div class="btnrow"><button class="btn" id="next">Kembali ke papan</button></div>');
+  $("next").onclick=finishClue;
+}
+function revealPlayer(){
+  showCd(false);$("ctx").innerHTML=clueText()+'<div class="answer">Jawaban: '+esc(GS.cur.a[0])+'</div>';
+  setStat(GS.cur.revealMsg||"");setAct('<p class="hint" style="color:#c7cdf7;text-align:center;margin:0">Menunggu Tuan Rumah...</p>');
+}
+/* daily double */
+function ddHost(){
+  showCd(false);var p=GS.players[GS.control];
+  $("ctx").innerHTML='<div class="dd">Daily Double</div>';
+  setStat((p?p.name:"")+" pilih taruhan di HP-nya.");
+  setAct('<p class="hint" style="color:#c7cdf7;text-align:center;margin:0">Menunggu taruhan pemain...</p>');
+  // host waits for wager via room? DD wager comes from the controlling player.
+}
+function ddPlayer(){
+  showCd(false);var ctrl=GS.players[GS.control];
+  if(!ctrl||ctrl.pid!==ME.peer){ $("ctx").innerHTML='<div class="dd">Daily Double</div>';setStat((ctrl?ctrl.name:"Pemain")+" dapat Daily Double");setAct("");return; }
+  var me=ctrl,max=Math.max(me.score,1000);
+  $("ctx").innerHTML='<div class="dd">Daily Double</div>';
+  setStat("Taruhan kamu, 5 sampai "+fmt(max));
+  var sent=mySubmittedK===GS.phaseK;
+  if(sent){setStat("Taruhan terkirim...");setAct("");return}
+  if(!$("wi")){
+    setAct('<div class="ansrow" style="--pc:'+me.color+'"><input id="wi" type="number" inputmode="numeric" placeholder="Taruhan"><button class="btn" id="wb">Pasang</button></div>');
+    var go=function(){var w=Math.round(+($("wi")?$("wi").value:0));if(!(w>=5&&w<=max)){setStat("Taruhan 5 sampai "+fmt(max));return}act("fwager",{amt:w,dd:true});mySubmittedK=GS.phaseK;setStat("Taruhan terkirim...");setAct("")};
+    if($("wb"))$("wb").onclick=go;
+    if($("wi"))$("wi").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();go()}});
+  }
+}
+
+
+/* ---- FINAL render ---- */
+function fcatHost(){
+  showCd(false);$("ctx").innerHTML='<div class="dd" style="font-size:clamp(30px,6vw,64px)">'+esc(GS.final.catName)+'</div>';
+  setStat("Kategori Final. Yang ikut: "+GS.final.el.map(function(pid){return playerBy(pid).name}).join(", "));
+  setAct('<div class="btnrow"><button class="btn" id="next">Mulai taruhan</button></div>');
+  $("next").onclick=finalToWager;
+}
+function fcatPlayer(){
+  showCd(false);$("ctx").innerHTML='<div class="dd" style="font-size:clamp(30px,6vw,64px)">'+esc(GS.final.catName)+'</div>';
+  var inF=GS.final.el.indexOf(ME.peer)>=0;
+  setStat(inF?"Bersiap pasang taruhan...":"Kamu tidak ikut Final (poin di bawah nol)");setAct("");
+}
+function fwagerHost(){
+  showCd(false);var F=GS.final;$("ctx").innerHTML='<div class="dd" style="font-size:clamp(30px,6vw,64px)">'+esc(F.catName)+'</div>';
+  setStat("Menunggu taruhan rahasia... ("+Object.keys(F.wagers).length+"/"+F.el.length+")");
+  setAct('<p class="hint" style="color:#c7cdf7;text-align:center;margin:0">Tiap pemain pasang taruhan di HP masing-masing.</p>');
+}
+function fwagerPlayer(fresh){
+  showCd(false);var F=GS.final;var inF=F.el.indexOf(ME.peer)>=0;
+  $("ctx").innerHTML='<div class="dd" style="font-size:clamp(30px,6vw,64px)">'+esc(F.catName)+'</div>';
+  if(!inF){setStat("Kamu menonton Final");setAct("");return}
+  var me=playerBy(ME.peer),sent=(ME.peer in F.wagers)||mySubmittedK===GS.phaseK;
+  setStat(sent?"Taruhan terkirim, menunggu pemain lain...":"Taruhan rahasia kamu, 0 sampai "+fmt(me.score));
+  if(sent){setAct("");return}
+  if(!$("wi")){
+    setAct('<div class="ansrow" style="--pc:'+me.color+'"><input id="wi" type="password" inputmode="numeric" placeholder="Taruhan rahasia"><button class="btn" id="wb">Kunci</button></div>');
+    var go=function(){var v=$("wi")?$("wi").value:"";var w=Math.round(+v);if(v===""||!(w>=0&&w<=me.score)){setStat("Taruhan 0 sampai "+fmt(me.score));return}playerFWager(w);setStat("Taruhan terkirim...");setAct("")};
+    if($("wb"))$("wb").onclick=go;
+    if($("wi"))$("wi").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();go()}});
+  }
+}
+function faskHost(){
+  showCd(true);startCountdown(30);var F=GS.final;
+  $("ctx").innerHTML=esc(F.text);
+  setStat("Pemain menjawab... ("+Object.keys(F.answers).length+"/"+F.el.length+")");
+  setAct('<div class="btnrow"><button class="btn ghost" id="rev">Buka hasil sekarang</button></div>');
+  if($("rev"))$("rev").onclick=finalReveal;
+}
+function faskPlayer(fresh){
+  var F=GS.final,inF=F.el.indexOf(ME.peer)>=0;showCd(true);if(fresh)startCountdown(30);
+  $("ctx").innerHTML=esc(F.text);
+  if(!inF){setStat("Kamu menonton Final");setAct("");return}
+  var me=playerBy(ME.peer),sent=(ME.peer in F.answers)||mySubmittedK===GS.phaseK;
+  setStat(sent?"Jawaban terkirim...":"Jawaban Final kamu, 30 detik (taruhan "+fmt(F.wagers[ME.peer]||0)+")");
+  if(sent){setAct("");return}
+  if(!$("ai")){
+    setAct('<div class="ansrow" style="--pc:'+me.color+'"><input id="ai" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Jawaban Final..."><button class="btn" id="ab">Kunci</button></div>');
+    var inp=$("ai");setTimeout(function(){if(inp)inp.focus()},30);
+    var go=function(){var v=$("ai")?$("ai").value:"";playerFAnswer(v);setStat("Jawaban terkirim...");setAct("")};
+    if($("ab"))$("ab").onclick=go;
+    if(inp)inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();go()}});
+  }
+}
+function frevealHost(){
+  showCd(false);var F=GS.final;
+  var h='<div style="font-size:.5em;max-width:38ch;margin:0 auto 6px">'+esc(F.text)+'<div class="answer">Jawaban: '+esc(F.a[0])+'</div></div>';
+  h+=F.el.map(function(pid){var p=playerBy(pid);return '<div class="typed" style="display:flex;justify-content:space-between;gap:8px;border-top:1px solid #ffffff33;padding:8px 0"><span>'+esc(p.name)+': '+(F.answers[pid]&&F.answers[pid].trim()?esc(F.answers[pid]):"(kosong)")+' <span style="opacity:.6">('+fmt(F.wagers[pid]||0)+')</span></span><button class="btn ghost" data-p="'+pid+'">'+(F.ok[pid]?"Benar":"Salah")+'</button></div>'}).join("");
+  $("ctx").innerHTML=h;setStat("");
+  setAct('<div class="btnrow"><button class="btn" id="apply">Terapkan & lihat hasil</button></div>');
+  Array.prototype.forEach.call(document.querySelectorAll("[data-p]"),function(b){b.onclick=function(){finalToggle(b.getAttribute("data-p"))}});
+  $("apply").onclick=finalApply;
+}
+function frevealPlayer(){
+  showCd(false);var F=GS.final;var mine=F.el.indexOf(ME.peer)>=0;
+  $("ctx").innerHTML='<div class="answer" style="margin-top:0">Jawaban: '+esc(F.a[0])+'</div>'+
+    (mine?'<div class="typed">Kamu: '+(F.answers[ME.peer]&&F.answers[ME.peer].trim()?esc(F.answers[ME.peer]):"(kosong)")+' — '+(F.ok[ME.peer]?"Benar":"Salah")+'</div>':'');
+  setStat("");setAct('<p class="hint" style="color:#c7cdf7;text-align:center;margin:0">Menunggu Tuan Rumah...</p>');
+}
+function renderEnd(){
+  var r=GS.players.slice().sort(function(a,b){return b.score-a.score});
+  var h='<div class="wrap"><h1 class="logo">'+esc(r[0]?r[0].name:"")+' menang<small>Skor akhir</small></h1>';
+  r.forEach(function(p,i){h+='<div class="rank" style="--pc:'+p.color+'"><span>'+(i+1)+'. '+esc(p.name)+(p.pid===ME.peer?" (kamu)":"")+'</span><span class="slab">'+fmt(p.score)+'</span></div>'});
+  if(isHost())h+='<button class="big" id="again">Main lagi (pemain sama)</button>';
+  else h+='<p class="hint" style="text-align:center;margin-top:16px">Menunggu Tuan Rumah memulai game baru...</p>';
+  root.innerHTML=h+'</div>';
+  if($("again"))$("again").onclick=playAgain;
+  lastActKey=null;
+}
+var toastT=null;
+function toast(t){var d=$("toastEl");if(!d){d=document.createElement("div");d.id="toastEl";d.className="toast";document.body.appendChild(d)}d.textContent=t;d.classList.remove("hidden");clearTimeout(toastT);toastT=setTimeout(function(){if(d)d.classList.add("hidden")},2600)}
+function debugBoot(){
+  DEBUG=true;ME={peer:"p0",role:"host",name:"Andi",cid:"c0"};
+  GS={epoch:1,phase:"lobby",mode:"klasik",hostPeer:"p0",players:[
+    {pid:"p0",name:"Andi",color:PCOL[0],score:0},
+    {pid:"p1",name:"Bela",color:PCOL[1],score:0},
+    {pid:"p2",name:"Cici",color:PCOL[2],score:0}],control:0,board:null,cur:null,seq:1,phaseK:1};
+  // expose helpers so the test harness can drive remote players locally
+  window.__dbg={GS:function(){return GS},start:function(m){startGame(m||"klasik")},
+    dispatch:function(t,pid,d){dispatchHost(t,pid,d)},sfinal:function(){startFinal()},setMe:function(pid){ME.peer=pid;ME.role=(pid==="p0"?"host":"player");render();},render:render};
+  render();
+}
+
+})();
+</script>
+</body>
+</html>
