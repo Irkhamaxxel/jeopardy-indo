@@ -110,13 +110,11 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
    Yang wajib bener: apiKey dan databaseURL.
    ============================================================ */
 var FBCFG = {
-  apiKey: "AIzaSyCDh1xQbQXzoIHmmjPs9l8ux0As08l2XXU",
-  authDomain: "jeopardy-marvelous.firebaseapp.com",
-  databaseURL: "https://jeopardy-marvelous-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "jeopardy-marvelous",
-  storageBucket: "jeopardy-marvelous.firebasestorage.app",
-  messagingSenderId: "651166906790",
-  appId: "1:651166906790:web:54f31f494ecdd1d3997767"
+  apiKey: "PASTE_APIKEY_DISINI",
+  authDomain: "PASTE_PROJECT.firebaseapp.com",
+  databaseURL: "https://PASTE_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "PASTE_PROJECT",
+  appId: "PASTE_APPID"
 };
 /* ============================================================ */
 </script>
@@ -1311,7 +1309,7 @@ function renderHostLobby(){
   var roster=ps.map(function(p){return '<div class="pill" style="--pc:'+p.color+'"><span class="dot"></span>'+esc(p.name)+(p.pid==="p0"?' (kamu, host)':'')+'</div>'}).join("");
   root.innerHTML='<div class="wrap"><h1 class="logo">Ruang Tunggu<small>Sebar kode/link ke temen. Kamu ikut main.</small></h1>'+
   '<div class="sect"><h2>Kode room</h2><div style="font-family:\'Alfa Slab One\',serif;font-size:46px;color:var(--board);letter-spacing:8px;text-align:center;margin:4px 0">'+(CODE?esc(CODE):"...")+'</div>'+
-  (CODE?'<button class="big" id="copyLink">Salin link undangan</button><p class="hint" style="word-break:break-all">'+esc(link)+'</p>':'<p class="hint">Menyiapkan koneksi P2P...</p>')+'</div>'+
+  (CODE?'<button class="big" id="copyLink">Salin link undangan</button><p class="hint" style="word-break:break-all">'+esc(link)+'</p>':'<p class="hint">Menyiapkan koneksi Firebase...</p>')+'</div>'+
   '<div class="sect"><h2>Pemain <span class="badge">'+ps.length+'/4</span></h2><div class="roster">'+roster+'</div>'+(ps.length<2?'<p class="hint">Nunggu minimal 1 temen gabung.</p>':'')+'</div>'+
   '<div class="sect"><h2>Mode</h2><div class="count" id="modeBtns">'+
   '<button data-m="klasik" aria-pressed="'+(lobbyMode==="klasik")+'">Klasik</button>'+
