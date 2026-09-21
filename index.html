@@ -101,7 +101,25 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 <body>
 <div id="root"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+/* ============================================================
+   ISI CONFIG FIREBASE KAMU DI SINI (sekali saja)
+   Ambil dari Firebase Console > Project settings > Your apps (Web).
+   Yang wajib bener: apiKey dan databaseURL.
+   ============================================================ */
+var FBCFG = {
+  apiKey: "AIzaSyCDh1xQbQXzoIHmmjPs9l8ux0As08l2XXU",
+  authDomain: "jeopardy-marvelous.firebaseapp.com",
+  databaseURL: "https://jeopardy-marvelous-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "jeopardy-marvelous",
+  storageBucket: "jeopardy-marvelous.firebasestorage.app",
+  messagingSenderId: "651166906790",
+  appId: "1:651166906790:web:54f31f494ecdd1d3997767"
+};
+/* ============================================================ */
+</script>
 <script>
 /* ============ matcher ============ */
 var FILLERS = ["apa itu ", "siapa itu ", "siapakah ", "apakah ", "siapa ", "apa ", "the ", "adalah ", "yaitu "];
@@ -973,88 +991,101 @@ var AC=null;
 function beep(f,d,type){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();var o=AC.createOscillator(),g=AC.createGain();o.type=type||"square";o.frequency.value=f;o.connect(g);g.connect(AC.destination);g.gain.setValueAtTime(0.07,AC.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+d);o.start();o.stop(AC.currentTime+d)}catch(e){}}
 
 /* ============ capability bootstrap ============ */
-var ME={peer:null,role:null,name:""};   // peer = my player id (p0 for host)
-var GS=null;                              // authoritative game state (host) / mirrored (players)
-var PEER=null,CODE=null,HOSTCONN=null,CONNS={},NEXTN=1,DEBUG=false;
+var ME={peer:null,role:null,name:"",cid:null}; // peer = my player id (p0 host); cid = stable client id
+var GS=null;
+var CODE=null,DEBUG=false,DBOK=false,NEXTN=1;
+var rdb=null,stateRef=null,inboxRef=null,stateSub=null,inboxSub=null,lastJoin=0;
 
 function isHost(){return ME.role==="host"}
 function amPlayer(pid){return GS&&GS.players&&GS.players.some(function(p){return p.pid===pid})}
+function rid(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36)}
 
-if(location.search.indexOf("debug")>=0){ debugBoot(); } else { render(); }
+function fbInit(){
+  if(DBOK)return true;
+  if(!window.firebase||typeof FBCFG==="undefined"||!FBCFG.apiKey||FBCFG.apiKey.indexOf("PASTE")>=0||!FBCFG.databaseURL||FBCFG.databaseURL.indexOf("PASTE")>=0)return false;
+  try{ if(!firebase.apps.length)firebase.initializeApp(FBCFG); rdb=firebase.database(); DBOK=true; return true; }
+  catch(e){ return false; }
+}
 
-/* ---- transport (PeerJS, WebRTC P2P; host = hub & authority) ---- */
+if(location.search.indexOf("debug")>=0){ debugBoot(); }
+else if(!fbInit()){ renderSetup(); }
+else { ME.cid=rid(); render(); }
+
+/* ---- transport (Firebase Realtime Database; host = authority) ---- */
 function shortCode(){var s="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",c="";for(var i=0;i<4;i++)c+=s[Math.floor(Math.random()*s.length)];return c}
-function pid2id(code){return "jpns7."+code}
 
 function createRoom(name){
   ME.role="host";ME.name=name;ME.peer="p0";
-  GS={epoch:1,phase:"lobby",mode:lobbyMode,hostPeer:"p0",players:[{pid:"p0",name:name.slice(0,16),color:PCOL[0],score:0}],control:0,board:null,cur:null,seq:1,phaseK:1};
-  render();hostCreatePeer(0);
+  renderWaiting("Menyiapkan room...");
+  tryClaimCode(0,name);
 }
-function hostCreatePeer(tries){
-  CODE=shortCode();
-  try{PEER=new Peer(pid2id(CODE),{debug:1});}catch(e){toast("PeerJS gagal dimuat");return}
-  PEER.on("open",function(){render();});
-  PEER.on("connection",function(conn){
-    conn.on("open",function(){});
-    conn.on("data",function(d){hostOnData(conn,d);});
-    conn.on("close",function(){hostDropConn(conn);});
-    conn.on("error",function(){});
-  });
-  PEER.on("error",function(e){
-    var ty=e&&e.type;
-    if(ty==="unavailable-id"&&tries<6){try{PEER.destroy()}catch(_){}hostCreatePeer(tries+1);return}
-    if(ty==="network"||ty==="server-error"||ty==="socket-error")toast("Jaringan bermasalah, coba lagi");
-  });
+function tryClaimCode(tries,name){
+  var code=shortCode();
+  rdb.ref("rooms/"+code+"/state").once("value").then(function(snap){
+    var v=snap.val();
+    if(v&&v.createdAt&&(Date.now()-v.createdAt)<21600000&&tries<8){ tryClaimCode(tries+1,name); return; }
+    CODE=code;
+    GS={epoch:1,phase:"lobby",mode:lobbyMode,hostPeer:"p0",createdAt:Date.now(),
+        players:[{pid:"p0",cid:ME.cid,name:name.slice(0,16),color:PCOL[0],score:0}],
+        control:0,board:null,cur:null,seq:1,phaseK:1};
+    stateRef=rdb.ref("rooms/"+CODE+"/state");
+    inboxRef=rdb.ref("rooms/"+CODE+"/inbox");
+    inboxRef.remove();
+    hostListenInbox();
+    broadcast();
+  }).catch(function(e){ toast("Gagal konek Firebase. Cek config & rules database."); renderLanding(); });
 }
-function hostOnData(conn,d){
-  if(!d||!d.t)return;
-  if(d.t==="join"){
-    if(GS.phase!=="lobby"){try{conn.send({t:"full",reason:"Game sudah mulai"})}catch(e){}return}
-    if(GS.players.length>=4){try{conn.send({t:"full",reason:"Room penuh (maks 4)"})}catch(e){}return}
-    var pid="p"+(NEXTN++);conn.__pid=pid;CONNS[pid]=conn;
-    GS.players.push({pid:pid,name:String(d.name||"Pemain").slice(0,16),color:PCOL[GS.players.length%4],score:0});
-    try{conn.send({t:"welcome",pid:pid})}catch(e){}
-    bump();broadcast();
-  } else if(d.t==="act"&&conn.__pid){
-    dispatchHost(d.topic,conn.__pid,d.data);
-  }
+function hostListenInbox(){
+  inboxSub=inboxRef.on("child_added",function(ch){
+    var key=ch.key,item=ch.val();
+    try{ hostInbox(item); }catch(e){}
+    inboxRef.child(key).remove();
+  },function(e){});
 }
-function hostDropConn(conn){
-  var pid=conn.__pid;if(!pid)return;delete CONNS[pid];
-  if(GS&&GS.phase==="lobby"){GS.players=GS.players.filter(function(p){return p.pid!==pid});bump();broadcast();}
+function hostInbox(item){
+  if(!item||!item.topic)return;
+  if(item.topic==="join"){ hostAddPlayer(item.cid,item.name); return; }
+  var p=GS.players.filter(function(x){return x.cid===item.cid})[0];
+  if(p)dispatchHost(item.topic,p.pid,item.data);
+}
+function hostAddPlayer(cid,name){
+  if(!cid)return;
+  if(GS.players.some(function(p){return p.cid===cid})){ broadcast(); return; }
+  if(GS.phase!=="lobby"||GS.players.length>=4)return;
+  GS.players.push({pid:"p"+(NEXTN++),cid:cid,name:String(name||"Pemain").slice(0,16),color:PCOL[GS.players.length%4],score:0});
+  bump();broadcast();
 }
 function joinRoom(code,name){
   ME.role="player";ME.name=name;CODE=String(code).toUpperCase();
   renderWaiting("Menyambung ke room "+CODE+"...");
-  try{PEER=new Peer({debug:1});}catch(e){toast("PeerJS gagal dimuat");renderLanding();return}
-  PEER.on("open",function(){
-    HOSTCONN=PEER.connect(pid2id(CODE),{reliable:true});
-    HOSTCONN.on("open",function(){try{HOSTCONN.send({t:"join",name:name})}catch(e){}});
-    HOSTCONN.on("data",function(d){playerOnData(d);});
-    HOSTCONN.on("close",function(){renderWaiting("Terputus dari host.","Refresh lalu gabung lagi.");});
-    HOSTCONN.on("error",function(){});
-    setTimeout(function(){if(!ME.peer&&ME.role==="player"){toast("Room "+CODE+" belum kejawab. Cek kode / host udah bikin room belum.");}},7000);
-  });
-  PEER.on("error",function(e){
-    var ty=e&&e.type;
-    if(ty==="peer-unavailable"){renderLanding();toast("Room "+CODE+" nggak ada / host belum siap.");}
-    else if(ty==="network"||ty==="server-error"){toast("Jaringan bermasalah, coba lagi.");}
-  });
+  stateRef=rdb.ref("rooms/"+CODE+"/state");
+  inboxRef=rdb.ref("rooms/"+CODE+"/inbox");
+  var gotAny=false;
+  stateSub=stateRef.on("value",function(snap){
+    var v=snap.val();
+    if(!v)return;
+    gotAny=true;
+    GS=normalizeGS(v);
+    var mine=GS.players?GS.players.filter(function(p){return p.cid===ME.cid})[0]:null;
+    ME.peer=mine?mine.pid:null;
+    if(!ME.peer&&GS.phase==="lobby")sendJoin(name);
+    render();
+  },function(e){ toast("Koneksi database bermasalah."); });
+  sendJoin(name);
+  setTimeout(function(){ if(!gotAny){ toast("Room "+CODE+" nggak ketemu. Cek kode / host udah bikin belum."); renderLanding(); } },8000);
 }
-function playerOnData(d){
-  if(!d||!d.t)return;
-  if(d.t==="welcome"){ME.peer=d.pid;}
-  else if(d.t==="state"){GS=d.gs;render();}
-  else if(d.t==="full"){renderLanding();toast(d.reason||"Room penuh");}
+function sendJoin(name){
+  if(!inboxRef)return;
+  var now=Date.now();if(now-lastJoin<2500)return;lastJoin=now;
+  inboxRef.push({cid:ME.cid,topic:"join",name:name,ts:now});
 }
 function broadcast(){
-  if(ME.role==="host"){var snap=JSON.parse(JSON.stringify(GS));for(var pid in CONNS){try{CONNS[pid].send({t:"state",gs:snap})}catch(e){}}}
   render();
+  if(ME.role==="host"&&stateRef){ stateRef.set(JSON.parse(JSON.stringify(GS))).catch(function(e){}); }
 }
 function act(topic,data){
-  if(ME.role==="host"){dispatchHost(topic,ME.peer,data);}
-  else if(HOSTCONN){try{HOSTCONN.send({t:"act",topic:topic,data:data})}catch(e){}}
+  if(ME.role==="host"){ dispatchHost(topic,ME.peer,data); }
+  else if(inboxRef){ inboxRef.push({cid:ME.cid,topic:topic,data:(data===undefined?null:data),ts:Date.now()}); }
 }
 function dispatchHost(topic,pid,data){
   if(!GS)return;
@@ -1063,6 +1094,14 @@ function dispatchHost(topic,pid,data){
   else if(topic==="fwager")onFWager({peer:pid,data:data});
   else if(topic==="fanswer")onFAnswer({peer:pid,data:data});
   else if(topic==="pick"){if(GS.phase==="board"&&GS.players[GS.control]&&GS.players[GS.control].pid===pid)openCell(data.c,data.r);}
+}
+function normalizeGS(v){
+  if(!v)return v;
+  if(!v.players)v.players=[];
+  if(v.cur){ if(!v.cur.attempted)v.cur.attempted=[]; if(!v.cur.a)v.cur.a=[]; }
+  if(v.board)v.board.forEach(function(col){ if(col&&!col.cells)col.cells=[]; });
+  if(v.final){ var F=v.final; if(!F.el)F.el=[]; if(!F.wagers)F.wagers={}; if(!F.answers)F.answers={}; if(!F.ok)F.ok={}; if(!F.a)F.a=[]; }
+  return v;
 }
 
 /* ============ host state writer ============ */
@@ -1238,6 +1277,17 @@ function render(){
 }
 function v(id){return ($(id)&&$(id).value||"").trim()}
 
+function renderSetup(){
+  root.innerHTML='<div class="wrap"><h1 class="logo">Jeopardy Nusantara<small>Perlu disambungin ke Firebase dulu, sekali saja.</small></h1>'+
+  '<div class="sect"><h2>Langkah setup (~5 menit)</h2><ol class="hint" style="line-height:1.75;padding-left:20px;color:var(--muted)">'+
+  '<li>Buka <b>console.firebase.google.com</b>, login, klik <b>Add project</b> (next-next, gratis).</li>'+
+  '<li>Menu kiri: <b>Build &gt; Realtime Database &gt; Create Database</b>, pilih lokasi terdekat, pilih <b>Start in test mode</b>.</li>'+
+  '<li>Klik gerigi <b>Project settings</b>, scroll ke <b>Your apps</b>, klik ikon web <b>&lt;/&gt;</b>, daftarkan app.</li>'+
+  '<li>Firebase kasih blok <code>firebaseConfig</code>. Copy nilainya.</li>'+
+  '<li>Buka file HTML ini (index.html), cari komentar <b>ISI CONFIG FIREBASE</b> di bagian atas, ganti semua nilai <code>PASTE...</code> dengan punyamu. Simpan, re-upload ke GitHub.</li>'+
+  '</ol><p class="hint">Setelah itu, buka lagi halaman ini dan otomatis jadi layar Buat/Gabung room.</p></div></div>';
+  lastActKey=null;
+}
 function renderLanding(){
   var pre=(new URLSearchParams(location.search)).get("room")||"";
   root.innerHTML='<div class="wrap"><h1 class="logo">Jeopardy Nusantara<small>Main bareng dari HP masing-masing. Satu orang bikin room lalu sebar kodenya, temen tinggal gabung. Semua ikut main.</small></h1>'+
@@ -1534,7 +1584,7 @@ function renderEnd(){
 var toastT=null;
 function toast(t){var d=$("toastEl");if(!d){d=document.createElement("div");d.id="toastEl";d.className="toast";document.body.appendChild(d)}d.textContent=t;d.classList.remove("hidden");clearTimeout(toastT);toastT=setTimeout(function(){if(d)d.classList.add("hidden")},2600)}
 function debugBoot(){
-  DEBUG=true;ME={peer:"p0",role:"host",name:"Andi"};
+  DEBUG=true;ME={peer:"p0",role:"host",name:"Andi",cid:"c0"};
   GS={epoch:1,phase:"lobby",mode:"klasik",hostPeer:"p0",players:[
     {pid:"p0",name:"Andi",color:PCOL[0],score:0},
     {pid:"p1",name:"Bela",color:PCOL[1],score:0},
