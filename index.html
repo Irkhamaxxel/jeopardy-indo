@@ -50,14 +50,10 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .board{display:grid;gap:5px;min-width:560px}
 .board.ro{min-width:0}
 .cat{background:var(--cell);color:#fff;font-weight:800;text-align:center;display:flex;align-items:center;justify-content:center;padding:8px 4px;min-height:52px;font-size:clamp(11px,1.5vw,17px);line-height:1.12;border-bottom:4px solid #000}
-.cell{display:flex;align-items:center;justify-content:center;background:var(--cell);border:0;color:var(--gold);font-family:"Alfa Slab One",Georgia,serif;font-size:clamp(18px,3.4vw,44px);min-height:54px;text-shadow:2px 2px 0 #000}
-.game{display:flex;flex-direction:column;height:100vh;height:100dvh}
-.game .boardwrap{flex:1;min-height:0;display:flex}
-.game .board{flex:1;grid-template-rows:auto repeat(5,1fr)}
-.clue .scores{flex-shrink:0}
+.cell{background:var(--cell);border:0;color:var(--gold);font-family:"Alfa Slab One",Georgia,serif;font-size:clamp(18px,3vw,38px);min-height:54px;text-shadow:2px 2px 0 #000}
 .cell:hover:not(:disabled){background:var(--cell-hi)}
 .cell:disabled{background:var(--cell-used);color:transparent;text-shadow:none;cursor:default}
-.cell.ro{cursor:default}
+.cell.ro{cursor:default;font-size:clamp(11px,2vw,20px);min-height:34px}
 .scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:7px;padding:9px;background:#000}
 .plate{background:#0b1466;color:#fff;border-radius:4px;padding:7px 11px;border-top:5px solid var(--pc);position:relative}
 .plate.ctrl{box-shadow:inset 0 0 0 2px var(--gold)}
@@ -99,14 +95,12 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 @keyframes sp{to{transform:rotate(360deg)}}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#000;color:#fff;padding:10px 16px;border-radius:6px;z-index:50;font-size:14px;max-width:90vw;text-align:center}
 .badge{display:inline-block;background:#ffffff22;border-radius:20px;padding:3px 10px;font-size:12px;margin-left:8px}
-.ai-badge{display:inline-block;background:#8e4ec6;border-radius:4px;padding:2px 6px;font-size:11px;font-weight:700;color:#fff;margin-left:6px;vertical-align:middle}
-.aigen{display:flex;align-items:center;justify-content:center;gap:12px;padding:16px;color:#c7cdf7;font-size:14px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
 <div id="root"></div>
-<div style="position:fixed;right:8px;bottom:6px;font-size:11px;opacity:.45;z-index:60;pointer-events:none">v6</div>
+<div style="position:fixed;right:8px;bottom:6px;font-size:11px;opacity:.45;z-index:60;pointer-events:none">v3-firebase</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -125,18 +119,6 @@ var FBCFG = {
   messagingSenderId: "651166906790",
   appId: "1:651166906790:web:54f31f494ecdd1d3997767"
 };
-/* ============================================================ */
-/* ============================================================
-   SAKLAR AI: false = pakai soal yang sudah ada saja (tanpa Gemini).
-   Ubah ke true kalau mau soal AI aktif lagi.
-   ============================================================ */
-var USE_AI = false;
-/* ============================================================ */
-/* ============================================================
-   GEMINI API KEY (dari aistudio.google.com/api-keys)
-   Paste key lengkap kamu di sini.
-   ============================================================ */
-var GEMINI_KEY = "AQ.Ab8RN6IHepiomxcZ8Xafvsvzi95c3zEYrbDSCVkD02zI3SjZ4g";
 /* ============================================================ */
 </script>
 <script>
@@ -1887,11 +1869,6 @@ var Q = [
 (function(){
 "use strict";
 var PCOL=["var(--p0)","var(--p1)","var(--p2)","var(--p3)"];
-// Kategori yang diizinkan generate soal via AI (manual-only: si, kd, mt)
-var AI_CATS={"sa":1,"geo":1,"or":1,"fm":1,"gm":1,"pc":1,"gk":1,"am":1,"pui":1};
-// Cache soal AI per game (reset tiap startGame)
-var AI_CACHE={};
-var AI_PENDING={};
 var CATS=Q.map(function(c){return {id:c.id,name:c.name,strict:!!c.strict,items:c.q.map(function(x,i){return {id:c.id+":"+i,d:x[0],q:x[1],a:x[2].split("|")}})}});
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
@@ -2014,73 +1991,9 @@ function bump(){ GS.seq=(GS.seq||0)+1; }
 function bumpK(){ GS.phaseK=(GS.phaseK||0)+1; }
 
 /* ============ host timers ============ */
-var hostTimer=null,AUTO=4;
+var hostTimer=null;
 function hostAfter(sec,cb){ clearTimeout(hostTimer); hostTimer=setTimeout(cb,sec*1000); }
 function hostStop(){ clearTimeout(hostTimer); hostTimer=null; }
-
-/* ============ AI question generation ============ */
-function canUseAI(){return typeof USE_AI!=="undefined"&&USE_AI===true&&typeof GEMINI_KEY!=="undefined"&&GEMINI_KEY&&GEMINI_KEY.indexOf("PASTE")<0;}
-
-function catPrompt(catId,catName,level,existing){
-  var ex=existing&&existing.length?'\nJANGAN buat soal yang mirip dengan: '+existing.slice(0,8).map(function(q){return q.text}).join("; ")+'.':'';
-  var lvlDesc=["","mudah banget (anak SMP bisa jawab)","mudah","menengah","susah","sangat susah, butuh pengetahuan spesifik"][level]||"menengah";
-  return 'Kamu adalah pembuat soal kuis Jeopardy berbahasa Indonesia untuk kategori "'+catName+'" (tingkat '+level+'/5, '+lvlDesc+').'+
-'\n\nBuat TEPAT 1 soal kuis dalam format JSON berikut (tanpa markdown, tanpa penjelasan tambahan):'+
-'\n{"q":"<pernyataan soal, bukan pertanyaan, gaya Jeopardy>","a":"<jawaban utama>","alt":["<alias 1>","<alias 2>"]}'+
-'\n\nAturan penting:'+
-'\n- Soal berupa PERNYATAAN (contoh: "Ibukota Prancis." bukan "Apa ibukota Prancis?")'+
-'\n- Jawaban PASTI benar, satu jawaban definitif, bukan opini'+
-'\n- Hindari berita terkini atau kejadian setelah 2023'+
-'\n- Jawaban: kata/frasa pendek, alias hanya jika ada variasi umum yang diterima'+
-'\n- Fakta yang sudah mapan dan dapat diverifikasi'+ex+
-'\nRespond ONLY with the JSON object, nothing else.';
-}
-
-function genOneAI(catId,catName,level,existing,onDone,onFail){
-  if(!canUseAI()){onFail();return;}
-  var url="https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key="+GEMINI_KEY;
-  var done=false;
-  var timer=setTimeout(function(){if(!done){done=true;onFail();}},20000);
-  fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({contents:[{parts:[{text:catPrompt(catId,catName,level,existing)}]}],
-      generationConfig:{temperature:0.8,maxOutputTokens:200}})})
-  .then(function(r){return r.json()})
-  .then(function(d){
-    if(done)return;
-    var txt=(d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts&&d.candidates[0].content.parts[0]&&d.candidates[0].content.parts[0].text)||"";
-    txt=txt.replace(/```json|```/g,"").trim();
-    var obj=JSON.parse(txt);
-    if(!obj.q||!obj.a)throw new Error("bad shape");
-    done=true;clearTimeout(timer);
-    onDone({id:catId+":ai:"+Date.now()+":"+Math.random().toString(36).slice(2,6),d:level,q:obj.q,a:[obj.a].concat(obj.alt||[]),ai:true});
-  })
-  .catch(function(){if(!done){done=true;clearTimeout(timer);onFail();}});
-}
-
-function fillBoardWithAI(board,onAllDone){
-  var pending=0,done=0;
-  board.forEach(function(col){
-    if(!AI_CATS[col.catId])return;
-    col.cells.forEach(function(cell,r){
-      if(cell.q&&cell.q.text)return; // already has a question
-      pending++;
-      var existing=col.cells.filter(function(c){return c.q&&c.q.text}).map(function(c){return c.q});
-      genOneAI(col.catId,col.catName,r+1,existing,function(q){
-        cell.q={id:q.id,text:q.q,a:q.a,ai:true};
-        done++;if(done===pending)onAllDone();
-      },function(){
-        // fallback: pick random from manual bank
-        var cat=CATS.filter(function(c){return c.id===col.catId})[0];
-        if(cat){var pool=cat.items.filter(function(x){return x.d===r+1});
-          if(!pool.length)pool=cat.items;
-          var q=pool[Math.floor(Math.random()*pool.length)];
-          cell.q={id:q.id,text:q.q,a:q.a};}
-        done++;if(done===pending)onAllDone();
-      });
-    });
-  });
-  if(!pending)onAllDone();
-}
 
 /* ============ host: start game ============ */
 function startGame(mode){
@@ -2088,50 +2001,23 @@ function startGame(mode){
   if(ps.length<2){toast("Minimal 2 pemain.");return}
   ps.forEach(function(p,i){p.color=PCOL[i%4];p.score=0});
   var cats=shuffle(CATS).slice(0,6),vals=[200,400,600,800,1000];
-  // Build board: manual soal per difficulty, AI cats get placeholder for levels missing in manual
-  var board=cats.map(function(c){
-    var pool=shuffle(c.items);
-    var isAI=AI_CATS[c.id]&&canUseAI();
-    return {catId:c.id,catName:c.name,strict:c.strict,cells:vals.map(function(v,r){
-      // For AI-eligible categories: use manual for level 1 and 5 (mudah + susah, lebih akurat dari bank), AI for 2,3,4 (variasi)
-      var useAI = isAI && (r===1||r===3);
-      if(useAI) return {v:v,used:false,dd:false,q:null};
-      var q=pool.filter(function(x){return x.d===r+1})[0];
-      if(!q)q=pool[Math.floor(Math.random()*pool.length)];
-      return {v:v,used:false,dd:false,q:{id:q.id,text:q.q,a:q.a}};
-    })};
-  });
+  var board=cats.map(function(c){var pool=shuffle(c.items);return {catId:c.id,catName:c.name,strict:c.strict,cells:vals.map(function(v,r){var q=pool.filter(function(x){return x.d===r+1})[0]||pool[r];return {v:v,used:false,dd:false,q:{id:q.id,text:q.q,a:q.a}}})}});
   var ddCol=Math.floor(Math.random()*6),ddRow=1+Math.floor(Math.random()*4);board[ddCol].cells[ddRow].dd=true;
-  GS.mode=mode;GS.board=board;GS.control=Math.floor(Math.random()*ps.length);GS.phase="loading";GS.cur=null;bump();push();render();
-  // Generate AI questions for empty cells
-  if(canUseAI()){
-    fillBoardWithAI(board,function(){
-      GS.phase="board";bump();push();render();
-    });
-  } else {
-    // No AI: fill blanks from manual pool
-    board.forEach(function(col){col.cells.forEach(function(cell,r){
-      if(!cell.q){var cat=CATS.filter(function(c){return c.id===col.catId})[0];
-        if(cat){var pool=cat.items;var q=pool[Math.floor(Math.random()*pool.length)];cell.q={id:q.id,text:q.q,a:q.a};}
-      }
-    })});
-    GS.phase="board";bump();push();render();
-  }
+  GS.mode=mode;GS.board=board;GS.control=Math.floor(Math.random()*ps.length);GS.phase="board";GS.cur=null;bump();push();render();
 }
 
 /* ============ host: open clue ============ */
 function openCell(c,r){
   var cell=GS.board[c].cells[r];if(cell.used)return;
   var col=GS.board[c];
-  GS.cur={c:c,r:r,catName:col.catName,strict:col.strict,value:cell.v,dd:cell.dd,text:cell.q.text,a:cell.q.a,ai:!!cell.q.ai,
+  GS.cur={c:c,r:r,catName:col.catName,strict:col.strict,value:cell.v,dd:cell.dd,text:cell.q.text,a:cell.q.a,
     buzzer:null,attempted:[],typed:"",lastOk:null,lastDelta:0,wager:0,reveal:false};
   if(cell.dd){ GS.phase="dd"; bump();bumpK();push();render(); }
   else{ GS.phase="buzz"; bump();bumpK();push();render(); hostAfter(10,onBuzzTimeout); }
 }
 function onBuzzTimeout(){ if(!isHost()||GS.phase!=="buzz")return; doReveal("Waktu buzz habis."); }
 function doReveal(msg){
-  hostStop();GS.cur.reveal=true;GS.cur.revealMsg=msg||"";GS.phase="reveal";bump();bumpK();push();render();
-  hostAfter(AUTO,function(){ if(isHost()&&GS.phase==="reveal")finishClue(); });
+  GS.cur.reveal=true;GS.cur.revealMsg=msg||"";GS.phase="reveal";bump();push();render();
 }
 
 /* ============ host: buzz handling ============ */
@@ -2161,8 +2047,7 @@ function applyVerdict(ok){
   cur.lastDelta=d;cur.lastOk=ok;
   if(ok)GS.control=playerIdx(cur.buzzer);
   beep(ok?990:150,ok?.25:.35,ok?"sine":"sawtooth");
-  GS.phase="result";bump();bumpK();push();render();
-  hostAfter(AUTO,function(){ if(isHost()&&GS.phase==="result")hostNext(); });
+  GS.phase="result";bump();push();render();
 }
 function playerIdx(pid){for(var i=0;i<GS.players.length;i++)if(GS.players[i].pid===pid)return i;return 0}
 function playerBy(pid){return GS.players[playerIdx(pid)]}
@@ -2199,7 +2084,6 @@ function startFinal(){
   GS.final={catName:cat.name,strict:cat.strict,text:q.q,a:q.a,el:el,wagers:{},answers:{},ok:{},reveal:false};
   if(!el.length){GS.phase="end";bump();push();render();return}
   GS.phase="fcat";bump();bumpK();push();render();
-  hostAfter(AUTO,function(){ if(isHost()&&GS.phase==="fcat")finalToWager(); });
 }
 function finalToWager(){ GS.phase="fwager";bump();bumpK();push();render(); }
 function onFWager(m){
@@ -2249,12 +2133,6 @@ function playerAnswer(text){ act("answer",{text:text}); mySubmittedK=GS.phaseK; 
 function playerFWager(amt){ act("fwager",{amt:amt}); mySubmittedK=GS.phaseK; render(); }
 function playerFAnswer(text){ act("fanswer",{text:text}); mySubmittedK=GS.phaseK; render(); }
 
-document.addEventListener("keydown",function(e){
-  if(e.code!=="Space"&&e.key!==" ")return;
-  var tg=e.target&&e.target.tagName;if(tg==="INPUT"||tg==="TEXTAREA")return;
-  if(!GS||GS.phase!=="buzz")return;
-  e.preventDefault();if(!e.repeat)playerBuzz();
-});
 /* ============ client countdown ============ */
 var cdTimer=null,cdKey=null;
 function startCountdown(sec){
@@ -2274,7 +2152,6 @@ function render(){
   if(!ME.role){ renderLanding(); return; }
   if(!GS){ renderWaiting("Menyiapkan..."); return; }
   if(GS.phase==="lobby"){ isHost()?renderHostLobby():renderPlayerLobby(); return; }
-  if(GS.phase==="loading"){ renderWaiting("Menyiapkan soal"+(canUseAI()?" dengan AI":"")+"...","Sebentar ya, ini cuma sekali per game."); return; }
   if(GS.phase==="end"){ renderEnd(); return; }
   if(GS.phase==="board"){ renderBoard(); return; }
   renderClue();
@@ -2364,10 +2241,10 @@ function renderBoard(){
   });
   boardHTML+='</div></div>';
   var turn=GS.players[GS.control]?GS.players[GS.control].name:"";
-  root.innerHTML='<div class="game"><div class="top"><span class="round">'+(GS.mode==="kompetitif"?"Kompetitif":"Klasik")+'</span>'+
+  root.innerHTML='<div class="top"><span class="round">'+(GS.mode==="kompetitif"?"Kompetitif":"Klasik")+'</span>'+
     '<span class="turn">'+(canPick?"Giliranmu, pilih soal":"Giliran: "+esc(turn))+'</span>'+
     (isHost()?'<button id="toFinal">Final</button>':'<span class="turn">'+esc(ME.name)+'</span>')+'</div>'+
-    boardHTML+scoresHTML()+'</div>';
+    boardHTML+scoresHTML();
   if(canPick)Array.prototype.forEach.call(document.querySelectorAll(".cell[data-c]"),function(b){b.onclick=function(){act("pick",{c:+b.getAttribute("data-c"),r:+b.getAttribute("data-r")})}});
   if(isHost()&&$("toFinal"))$("toFinal").onclick=function(){if(confirm("Lewati sisa papan, langsung ke Final?"))startFinal()};
   wireScores();
@@ -2379,14 +2256,14 @@ function shell(headRight,textHTML){
   return '<div class="clue"><div class="chead"><span>'+esc(GS.cur?GS.cur.catName:(GS.final?GS.final.catName:""))+'</span><span class="v">'+headRight+'</span></div>'+
     '<div class="ctext"><div class="inner" id="ctx">'+textHTML+'</div></div>'+
     '<div class="timer'+'" id="cd"><i id="cdbar"></i></div>'+
-    '<div class="status" id="stat"></div><div class="act" id="act"></div>'+(GS.players&&GS.players.length?scoresHTML():'')+'</div>';
+    '<div class="status" id="stat"></div><div class="act" id="act"></div></div>';
 }
 function setStat(t){if($("stat"))$("stat").textContent=t}
 function setAct(h){if($("act"))$("act").innerHTML=h}
 function showCd(show){var w=$("cd");if(w)w.style.visibility=show?"visible":"hidden"}
 
 function renderClue(){
-  var actKey=[GS.phase,GS.cur?GS.cur.c+","+GS.cur.r:GS.final?"F":"-",GS.cur?GS.cur.buzzer:"",ME.role,GS.phaseK,GS.cur?GS.cur.lastDelta:"",GS.players.map(function(p){return p.score}).join(","),GS.final?Object.keys(GS.final.answers||{}).length+"/"+Object.keys(GS.final.wagers||{}).length:""].join("|");
+  var actKey=[GS.phase,GS.cur?GS.cur.c+","+GS.cur.r:GS.final?"F":"-",GS.cur?GS.cur.buzzer:"",ME.role,GS.phaseK,GS.cur?GS.cur.lastDelta:"",GS.final?Object.keys(GS.final.answers||{}).length+"/"+Object.keys(GS.final.wagers||{}).length:""].join("|");
   var fresh=actKey!==lastActKey;
   if(fresh){
     var head=GS.cur?fmt(GS.cur.value):"Final";
@@ -2398,18 +2275,15 @@ function renderClue(){
   if(P==="dd") return ddPlayer();
   if(P==="buzz") return buzzPlayer(fresh);
   if(P==="answer") return answerPlayer(fresh);
-  if(P==="result") return host?resultHost(fresh):resultPlayer(fresh);
-  if(P==="reveal") return host?revealHost(fresh):revealPlayer(fresh);
+  if(P==="result") return host?resultHost():resultPlayer();
+  if(P==="reveal") return host?revealHost():revealPlayer();
   if(P==="fcat") return host?fcatHost():fcatPlayer();
   if(P==="fwager") return fwagerPlayer(fresh);
   if(P==="fask") return faskPlayer(fresh);
   if(P==="freveal") return host?frevealHost():frevealPlayer();
 }
 
-function clueText(){
-  var badge=GS.cur.ai?'<span class="ai-badge">AI</span>':'';
-  return esc(GS.cur.text)+badge;
-}
+function clueText(){return esc(GS.cur.text)}
 /* buzz */
 function buzzHost(){
   $("ctx").innerHTML=clueText();showCd(true);startCountdown(10);
@@ -2424,7 +2298,7 @@ function buzzPlayer(fresh){
   var buzzed=myBuzzedK===GS.phaseK;
   if(!me){ setStat("Kamu menonton ronde ini."); setAct(""); return; }
   if(attempted){ setStat("Kamu sudah mencoba soal ini."); setAct('<button class="buzzbig" disabled style="--pc:'+me.color+'">SUDAH</button>'); return; }
-  setStat(buzzed?"Kamu buzz! Tunggu sebentar...":"Tekan BUZZ atau tombol SPASI kalau tahu jawabannya");
+  setStat(buzzed?"Kamu buzz! Menunggu Tuan Rumah...":"Tekan tombol kalau tahu jawabannya");
   setAct('<button class="buzzbig" id="bz" style="--pc:'+me.color+'"'+(buzzed?" disabled":"")+'>'+(buzzed?"...":"BUZZ")+'</button>');
   if($("bz"))$("bz").addEventListener("pointerdown",function(e){e.preventDefault();playerBuzz()});
 }
@@ -2454,39 +2328,36 @@ function answerPlayer(fresh){
   if(sent&&$("ai")){$("ai").disabled=true;if($("ab"))$("ab").disabled=true}
 }
 /* result */
-function resultHost(fresh){
-  var cur=GS.cur,p=playerBy(cur.buzzer),ok=cur.lastOk,d=cur.lastDelta;showCd(true);if(fresh)startCountdown(AUTO);
+function resultHost(){
+  var cur=GS.cur,p=playerBy(cur.buzzer),ok=cur.lastOk,d=cur.lastDelta;showCd(false);
   var more=!ok&&!cur.dd&&eligibleLeft().length>0;
   $("ctx").innerHTML='<div class="verdict '+(ok?"ok":"bad")+'">'+(ok?"Benar! +"+fmt(d):(d?"Salah, -"+fmt(-d):"Salah"))+'</div>'+
     '<div class="typed">'+esc(p?p.name:"")+': '+(cur.typed&&cur.typed.trim()?esc(cur.typed):"(kosong)")+'</div>'+
     (more?"":'<div class="answer">Jawaban: '+esc(cur.a[0])+'</div>');
   setStat("");
-  setStat("Lanjut otomatis...");
-  setAct('<div class="btnrow"><button class="btn" id="next">'+(more?"Lanjut sekarang":"Ke papan sekarang")+'</button>'+
+  setAct('<div class="btnrow"><button class="btn" id="next">'+(more?"Lanjut, pemain lain buzz":"Kembali ke papan")+'</button>'+
     '<button class="btn ghost" id="ov">'+(ok?"Koreksi: jadi salah":"Koreksi: jadi benar")+'</button></div>'+
     '<div class="btnrow"><button class="flag" id="flag">Soal ini keliru? Lewati saja</button></div>');
-  $("next").onclick=function(){hostStop();hostNext()};$("ov").onclick=hostOverride;
+  $("next").onclick=hostNext;$("ov").onclick=hostOverride;
   if($("flag"))$("flag").onclick=function(){doReveal("Soal dilewati.")};
 }
-function resultPlayer(fresh){
-  var cur=GS.cur,p=playerBy(cur.buzzer),ok=cur.lastOk,d=cur.lastDelta;showCd(true);if(fresh)startCountdown(AUTO);
+function resultPlayer(){
+  var cur=GS.cur,p=playerBy(cur.buzzer),ok=cur.lastOk;showCd(false);
   var more=!ok&&!cur.dd&&eligibleLeft().length>0;
-  var who=cur.buzzer===ME.peer?"Kamu":(p?p.name:"Pemain");
-  $("ctx").innerHTML='<div class="verdict '+(ok?"ok":"bad")+'">'+who+(ok?" benar!":" salah")+(d?' <span style="white-space:nowrap">'+(d>0?"+":"-")+fmt(Math.abs(d))+'</span>':'')+'</div>'+
-    '<div class="typed">Dijawab: '+(cur.typed&&cur.typed.trim()?esc(cur.typed):"(kosong)")+'</div>'+
+  $("ctx").innerHTML='<div class="verdict '+(ok?"ok":"bad")+'">'+(cur.buzzer===ME.peer?(ok?"Kamu benar!":"Kamu salah"):((p?p.name:"Pemain")+(ok?" benar":" salah")))+'</div>'+
     (more?'<div class="typed">Pemain lain masih bisa buzz</div>':'<div class="answer">Jawaban: '+esc(cur.a[0])+'</div>');
-  setStat(more?"Buzz dibuka lagi sebentar lagi...":"Balik ke papan otomatis...");setAct("");
+  setStat("");setAct('<p class="hint" style="color:#c7cdf7;text-align:center;margin:0">Menunggu Tuan Rumah...</p>');
 }
 /* reveal */
-function revealHost(fresh){
-  showCd(true);if(fresh)startCountdown(AUTO);$("ctx").innerHTML=clueText()+'<div class="answer">Jawaban: '+esc(GS.cur.a[0])+'</div>';
+function revealHost(){
+  showCd(false);$("ctx").innerHTML=clueText()+'<div class="answer">Jawaban: '+esc(GS.cur.a[0])+'</div>';
   setStat(GS.cur.revealMsg||"");
-  setAct('<div class="btnrow"><button class="btn" id="next">Ke papan sekarang</button></div>');
-  $("next").onclick=function(){hostStop();finishClue()};
+  setAct('<div class="btnrow"><button class="btn" id="next">Kembali ke papan</button></div>');
+  $("next").onclick=finishClue;
 }
-function revealPlayer(fresh){
-  showCd(true);if(fresh)startCountdown(AUTO);$("ctx").innerHTML=clueText()+'<div class="answer">Jawaban: '+esc(GS.cur.a[0])+'</div>';
-  setStat((GS.cur.revealMsg?GS.cur.revealMsg+" ":"")+"Balik ke papan otomatis...");setAct("");
+function revealPlayer(){
+  showCd(false);$("ctx").innerHTML=clueText()+'<div class="answer">Jawaban: '+esc(GS.cur.a[0])+'</div>';
+  setStat(GS.cur.revealMsg||"");setAct('<p class="hint" style="color:#c7cdf7;text-align:center;margin:0">Menunggu Tuan Rumah...</p>');
 }
 /* daily double */
 function ddHost(){
@@ -2517,8 +2388,8 @@ function ddPlayer(){
 function fcatHost(){
   showCd(false);$("ctx").innerHTML='<div class="dd" style="font-size:clamp(30px,6vw,64px)">'+esc(GS.final.catName)+'</div>';
   setStat("Kategori Final. Yang ikut: "+GS.final.el.map(function(pid){return playerBy(pid).name}).join(", "));
-  setAct('<div class="btnrow"><button class="btn" id="next">Mulai taruhan sekarang</button></div>');
-  $("next").onclick=function(){hostStop();finalToWager()};
+  setAct('<div class="btnrow"><button class="btn" id="next">Mulai taruhan</button></div>');
+  $("next").onclick=finalToWager;
 }
 function fcatPlayer(){
   showCd(false);$("ctx").innerHTML='<div class="dd" style="font-size:clamp(30px,6vw,64px)">'+esc(GS.final.catName)+'</div>';
